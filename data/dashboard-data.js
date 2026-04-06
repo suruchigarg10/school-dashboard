@@ -74,6 +74,17 @@ window.DASHBOARD_DATA = {
   // quizLog: { date, subject, correct, wrong, questions: [{q, subject, correct}] }
   quizLog: [],
 
+  // ── Myra's data (Kunskappskolan KG) ──────────────────────
+  myra: {
+    meta: {
+      name: "Myra Garg",
+      school: "Kunskappskolan",
+      grade: "Kindergarten"
+    },
+    // days: [{ date, summary, emails: [{subject, from, summary, actions:[]}] }]
+    days: []
+  },
+
   veracrossLog: [
     {
       date: "2026-04-04",

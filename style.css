@@ -334,6 +334,27 @@ footer {
   background: white;
 }
 
+/* MYRA TAB */
+.myra-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 0 1rem;
+}
+.myra-emoji { font-size: 2.5rem; }
+.myra-header h2 { font-size: 1.2rem; font-weight: 700; color: #db2777; }
+.myra-header p  { font-size: 0.8rem; color: var(--gray-400); }
+.myra-action {
+  font-size: 0.8rem;
+  color: #db2777;
+  font-weight: 500;
+  margin-top: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  background: #fdf2f8;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
 /* HOMEWORK */
 .hw-summary {
   display: flex;

@@ -359,6 +359,92 @@ function renderTimetable() {
   el.innerHTML = html;
 }
 
+// ── Myra Tab ──────────────────────────────────────────────────
+function renderMyra() {
+  const myra  = DATA.myra || {};
+  const today = todayISO();
+  const days  = (myra.days || []).sort((a,b) => b.date.localeCompare(a.date));
+  const todayEntry = days.find(d => d.date === today);
+
+  // Date badge
+  document.getElementById('myraTodayDate').textContent =
+    new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' });
+
+  // Today's summary
+  const sumEl = document.getElementById('myraTodaySummary');
+  sumEl.innerHTML = todayEntry?.summary
+    ? `<div style="white-space:pre-wrap;font-size:0.875rem;line-height:1.7">${escHtml(todayEntry.summary)}</div>`
+    : '<p class="muted">No updates yet for today. Check back after 7 PM.</p>';
+
+  // Action items for today
+  const actEl = document.getElementById('myraActions');
+  const actions = todayEntry?.emails?.flatMap(e => e.actions || []) || [];
+  if (actions.length) {
+    actEl.innerHTML = actions.map(a => `
+      <div class="vc-item">
+        <span style="font-size:1.1rem">🔔</span>
+        <div class="vc-label"><span>${escHtml(a)}</span></div>
+      </div>
+    `).join('');
+  } else {
+    actEl.innerHTML = '<p class="muted">No actions required today.</p>';
+  }
+
+  // Today's emails
+  const emailEl = document.getElementById('myraEmails');
+  const todayEmails = todayEntry?.emails || [];
+  if (todayEmails.length) {
+    emailEl.innerHTML = todayEmails.map(e => `
+      <div class="email-item">
+        <div class="email-subject">${escHtml(e.subject)}</div>
+        <div class="email-from">${escHtml(e.from)}</div>
+        <div class="email-preview">${escHtml(e.summary)}</div>
+        ${(e.actions||[]).length ? `<div class="email-tags"><span class="tag tag-hw">🔔 Action required</span></div>` : ''}
+      </div>
+    `).join('');
+  } else {
+    emailEl.innerHTML = '<p class="muted">No emails today.</p>';
+  }
+
+  // Full history — all days, newest first
+  const histEl = document.getElementById('myraHistory');
+  if (!days.length) {
+    histEl.innerHTML = '<p class="muted">No history yet.</p>';
+    return;
+  }
+
+  histEl.innerHTML = days.map((day, i) => {
+    const allActions = (day.emails||[]).flatMap(e => e.actions || []);
+    return `
+      <div class="hist-section">
+        <div class="hist-section-header" onclick="toggleMyraDay(${i})">
+          <span class="hist-section-title">${formatDate(day.date)}</span>
+          <span class="hist-section-count">${(day.emails||[]).length} email(s)${allActions.length ? ' · 🔔 ' + allActions.length + ' action(s)' : ''}</span>
+          <span class="hist-section-toggle" id="myra-toggle-${i}">▲</span>
+        </div>
+        <div class="hist-section-body open" id="myra-body-${i}">
+          ${day.summary ? `<div style="padding:0.75rem 1.5rem;font-size:0.875rem;color:var(--gray-600);white-space:pre-wrap">${escHtml(day.summary)}</div>` : ''}
+          ${(day.emails||[]).map(e => `
+            <div class="email-item">
+              <div class="email-subject">${escHtml(e.subject)}</div>
+              <div class="email-from">${escHtml(e.from)}</div>
+              <div class="email-preview">${escHtml(e.summary)}</div>
+              ${(e.actions||[]).map(a => `<div class="myra-action">🔔 ${escHtml(a)}</div>`).join('')}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.toggleMyraDay = function(i) {
+  const body   = document.getElementById('myra-body-' + i);
+  const toggle = document.getElementById('myra-toggle-' + i);
+  const open   = body.classList.toggle('open');
+  toggle.textContent = open ? '▲' : '▼';
+};
+
 // ── Init ───────────────────────────────────────────────────
 renderHeader();
 renderTodaySubjects();
@@ -370,3 +456,4 @@ renderHistory();
 renderTopicLog();
 renderVeracrossTab();
 renderTimetable();
+renderMyra();
