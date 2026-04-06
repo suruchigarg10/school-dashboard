@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Arjun's School Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="header-title">
+        <span class="emoji">🎒</span>
+        <div>
+          <h1>Arjun's Dashboard</h1>
+          <p class="subtitle">Shiv Nadar · Grade 7</p>
+        </div>
+      </div>
+      <div class="header-meta" id="headerMeta">Loading...</div>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="today">📅 Today</button>
+      <button class="tab" data-tab="history">📖 History</button>
+      <button class="tab" data-tab="topics">📚 Topic Log</button>
+      <button class="tab" data-tab="veracross">🏫 Veracross</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- TODAY TAB -->
+    <section id="tab-today" class="tab-content active">
+      <div class="grid-2">
+        <!-- Today's Summary Card -->
+        <div class="card full-width">
+          <div class="card-header">
+            <h2>📋 Today's Summary</h2>
+            <span class="date-badge" id="todayDate"></span>
+          </div>
+          <div id="todaySummary" class="summary-body">
+            <p class="muted">No updates yet for today. Check back after 7 PM.</p>
+          </div>
+        </div>
+
+        <!-- Today's Subjects -->
+        <div class="card">
+          <div class="card-header"><h2>📅 Today's Subjects</h2></div>
+          <div id="todaySubjects" class="subject-chips"></div>
+        </div>
+
+        <!-- School Emails -->
+        <div class="card">
+          <div class="card-header"><h2>📧 School Emails</h2></div>
+          <div id="todayEmails">
+            <p class="muted">No emails processed yet.</p>
+          </div>
+        </div>
+
+        <!-- Veracross Checklist -->
+        <div class="card full-width">
+          <div class="card-header">
+            <h2>✅ Veracross Action Items</h2>
+            <span class="badge-info">Items to download/upload today</span>
+          </div>
+          <div id="veracrossChecklist">
+            <p class="muted">No Veracross updates detected yet.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY TAB -->
+    <section id="tab-history" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2>📖 Daily History</h2>
+          <input type="month" id="historyMonthPicker" />
+        </div>
+        <div id="historyList">
+          <p class="muted">No history yet. Updates will appear here each evening.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOPIC LOG TAB -->
+    <section id="tab-topics" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2>📚 Topic Log by Subject</h2>
+          <span class="badge-info">Auto-updated from teacher emails</span>
+        </div>
+        <div id="topicLog">
+          <p class="muted">Topics will be logged here as teacher emails come in.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VERACROSS TAB -->
+    <section id="tab-veracross" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2>🏫 Veracross Updates</h2>
+          <span class="badge-info">Based on Veracross notification emails</span>
+        </div>
+        <p class="muted" style="padding: 0 1.5rem 1rem">
+          When you receive a Veracross update email, the items to download are listed here.
+          After downloading and uploading them, the dashboard updates automatically.
+        </p>
+        <div id="veracrossLog">
+          <p class="muted" style="padding:0 1.5rem 1rem">No Veracross emails detected yet.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Last updated: <span id="lastUpdated">Never</span> · Built with ❤️ for Arjun</p>
+  </footer>
+
+  <script src="data/dashboard-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

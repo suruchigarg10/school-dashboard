@@ -1,0 +1,14 @@
+{
+  "student": "Arjun Kumar",
+  "school": "Shiv Nadar",
+  "grade": 7,
+  "timetable": {
+    "Monday": ["Social Science", "Physics", "AHA Sports", "Chemistry", "Math", "IT"],
+    "Tuesday": ["Chemistry", "Social Science", "Hindi", "Math", "AHA Arts", "Spanish", "English"],
+    "Wednesday": ["Test Period", "Math", "Library", "Assembly", "English", "IT", "Hindi"],
+    "Thursday": ["Spanish", "Social Science", "Math", "STEAM", "Biology", "English", "Hindi"],
+    "Friday": ["AHA Arts", "English", "Social Science", "Physics", "PE", "Biology", "Clubs"]
+  },
+  "coreSubjects": ["Math", "English", "Hindi", "Social Science", "Physics", "Chemistry", "Biology", "IT", "Spanish"],
+  "activityPeriods": ["AHA Sports", "AHA Arts", "PE", "Library", "Assembly", "STEAM", "Clubs", "Test Period"]
+}
