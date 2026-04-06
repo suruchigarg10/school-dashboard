@@ -108,6 +108,41 @@ function tagLabel(t) {
 }
 
 // ── Veracross Checklist ────────────────────────────────────
+// Homework Tracker
+function renderHomework() {
+  const today = todayISO();
+  const entry = DATA.days.find(d => d.date === today);
+  const el    = document.getElementById('homeworkList');
+  const items = entry?.homeworkItems || [];
+
+  if (!items.length) {
+    el.innerHTML = '<p class="muted">No homework assigned yet today.</p>';
+    return;
+  }
+
+  const done    = items.filter(h => h.done).length;
+  const pending = items.length - done;
+
+  let html = '<div class="hw-summary">';
+  html += '<span class="hw-stat hw-done-stat">✅ ' + done + ' done</span>';
+  if (pending) html += '<span class="hw-stat hw-pending-stat">⏳ ' + pending + ' pending</span>';
+  html += '</div>';
+
+  html += items.map((h, i) => `
+    <div class="vc-item ${h.done ? 'hw-item-done' : ''}">
+      <input type="checkbox" class="vc-checkbox" id="hw-${i}" ${h.done ? 'checked' : ''} disabled>
+      <label class="vc-label" for="hw-${i}">
+        <strong>${escHtml(h.subject)}</strong>
+        <span>${escHtml(h.description)}</span>
+        ${h.dueDate ? '<span class="hw-due">📅 Due: ' + escHtml(h.dueDate) + '</span>' : ''}
+        ${h.done && h.doneAt ? '<span class="hw-done-time">✅ Done at ' + new Date(h.doneAt).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) + '</span>' : ''}
+      </label>
+    </div>
+  `).join('');
+
+  el.innerHTML = html;
+}
+
 function renderVeracrossChecklist() {
   const today = todayISO();
   const entry = DATA.days.find(d => d.date === today);
@@ -329,6 +364,7 @@ renderHeader();
 renderTodaySubjects();
 renderTodaySummary();
 renderTodayEmails();
+renderHomework();
 renderVeracrossChecklist();
 renderHistory();
 renderTopicLog();
