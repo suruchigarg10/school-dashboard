@@ -131,39 +131,80 @@ function renderVeracrossChecklist() {
 }
 
 // ── History Tab ────────────────────────────────────────────
+// Groups ALL emails across ALL days by section (General + per subject)
+// Within each section, shows entries sorted by date descending.
 function renderHistory() {
   const el = document.getElementById('historyList');
-  const sorted = [...DATA.days].sort((a,b) => b.date.localeCompare(a.date));
+  const allDays = [...DATA.days].sort((a,b) => b.date.localeCompare(a.date));
 
-  if (!sorted.length) {
+  if (!allDays.length) {
     el.innerHTML = '<p class="muted">No history yet.</p>';
     return;
   }
 
-  el.innerHTML = sorted.map((day, i) => `
-    <div class="history-day">
-      <div class="history-day-header" onclick="toggleHistory(${i})">
-        <span class="history-day-date">${formatDate(day.date)}</span>
-        <span class="history-day-meta">${(day.emails||[]).length} email(s) · ${(day.topicsCovered||[]).join(', ') || 'No topics logged'}</span>
-        <span class="history-day-toggle" id="hist-toggle-${i}">▼</span>
+  // Build a flat list of { date, email } across all days
+  const allEntries = [];
+  allDays.forEach(day => {
+    (day.emails || []).forEach(email => {
+      allEntries.push({ date: day.date, email });
+    });
+  });
+
+  // Group by section: null → General, else subject name
+  const sections = {}; // key: "General" or subject name
+  allEntries.forEach(({ date, email }) => {
+    const key = email.schoolSubject || 'General';
+    if (!sections[key]) sections[key] = [];
+    sections[key].push({ date, email });
+  });
+
+  // Order: General first, then subjects in coreSubjects order
+  const sectionOrder = ['General', ...DATA.coreSubjects];
+  const orderedKeys = [
+    ...sectionOrder.filter(k => sections[k]),
+    ...Object.keys(sections).filter(k => !sectionOrder.includes(k))
+  ];
+
+  const sectionEmoji = {
+    'General': '📢', 'Math': '🔢', 'English': '📖', 'Hindi': '🪷',
+    'Social Science': '🌍', 'Physics': '⚡', 'Chemistry': '🧪',
+    'Biology': '🌿', 'IT': '💻', 'Spanish': '🇪🇸'
+  };
+
+  el.innerHTML = orderedKeys.map((sectionKey, si) => {
+    const entries = sections[sectionKey].sort((a,b) => b.date.localeCompare(a.date));
+    const emoji = sectionEmoji[sectionKey] || '📚';
+
+    const rows = entries.map(({ date, email }) => `
+      <div class="hist-section-entry">
+        <div class="hist-entry-date">${formatDate(date)}</div>
+        <div class="hist-entry-content">
+          <div class="email-subject">${escHtml(email.subject)}</div>
+          <div class="email-from">${escHtml(email.from)}</div>
+          <div class="email-preview">${escHtml(email.summary)}</div>
+          <div class="email-tags">${(email.tags||[]).map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')}</div>
+        </div>
       </div>
-      <div class="history-day-body" id="hist-body-${i}">
-        <p style="white-space:pre-wrap">${escHtml(day.summary || 'No summary.')}</p>
-        ${(day.emails||[]).map(e => `
-          <div class="email-item">
-            <div class="email-subject">${escHtml(e.subject)}</div>
-            <div class="email-from">${escHtml(e.from)}</div>
-            <div class="email-preview">${escHtml(e.summary)}</div>
-          </div>
-        `).join('')}
+    `).join('');
+
+    return `
+      <div class="hist-section">
+        <div class="hist-section-header" onclick="toggleHistSection(${si})">
+          <span class="hist-section-title">${emoji} ${sectionKey}</span>
+          <span class="hist-section-count">${entries.length} update${entries.length !== 1 ? 's' : ''}</span>
+          <span class="hist-section-toggle" id="hst-toggle-${si}">▲</span>
+        </div>
+        <div class="hist-section-body open" id="hst-body-${si}">
+          ${rows}
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
-window.toggleHistory = function(i) {
-  const body = document.getElementById('hist-body-' + i);
-  const toggle = document.getElementById('hist-toggle-' + i);
+window.toggleHistSection = function(i) {
+  const body = document.getElementById('hst-body-' + i);
+  const toggle = document.getElementById('hst-toggle-' + i);
   const open = body.classList.toggle('open');
   toggle.textContent = open ? '▲' : '▼';
 };
@@ -249,6 +290,40 @@ function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Timetable Tab ─────────────────────────────────────────
+function renderTimetable() {
+  const el = document.getElementById('timetableGrid');
+  const today = todayDayName();
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+
+  // Find max periods across all days
+  const maxPeriods = Math.max(...days.map(d => (DATA.timetable[d] || []).length));
+
+  let html = '<div class="timetable-grid">';
+
+  days.forEach(day => {
+    const isToday = day === today;
+    html += `<div class="tt-day-col">`;
+    html += `<div class="tt-day-header ${isToday ? 'today-col' : ''}">${day}${isToday ? '<span class="tt-today-badge">Today</span>' : ''}</div>`;
+
+    const periods = DATA.timetable[day] || [];
+    for (let i = 0; i < maxPeriods; i++) {
+      const subject = periods[i] || '';
+      if (!subject) {
+        html += `<div class="tt-period"></div>`;
+      } else {
+        const isCore = DATA.coreSubjects.includes(subject);
+        html += `<div class="tt-period ${isCore ? 'core' : 'activity'}">${subject}</div>`;
+      }
+    }
+
+    html += `</div>`;
+  });
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
 // ── Init ───────────────────────────────────────────────────
 renderHeader();
 renderTodaySubjects();
@@ -258,3 +333,4 @@ renderVeracrossChecklist();
 renderHistory();
 renderTopicLog();
 renderVeracrossTab();
+renderTimetable();
