@@ -420,20 +420,6 @@ function renderMyra() {
     ? `<div style="white-space:pre-wrap;font-size:0.875rem;line-height:1.7">${escHtml(todayEntry.summary)}</div>`
     : '<p class="muted">No updates yet for today. Check back after 7 PM.</p>';
 
-  // Action items for today
-  const actEl = document.getElementById('myraActions');
-  const actions = todayEntry?.emails?.flatMap(e => e.actions || []) || [];
-  if (actions.length) {
-    actEl.innerHTML = actions.map(a => `
-      <div class="vc-item">
-        <span style="font-size:1.1rem">🔔</span>
-        <div class="vc-label"><span>${escHtml(a)}</span></div>
-      </div>
-    `).join('');
-  } else {
-    actEl.innerHTML = '<p class="muted">No actions required today.</p>';
-  }
-
   // Today's emails
   const emailEl = document.getElementById('myraEmails');
   const todayEmails = todayEntry?.emails || [];
@@ -443,7 +429,7 @@ function renderMyra() {
         <div class="email-subject">${escHtml(e.subject)}</div>
         <div class="email-from">${escHtml(e.from)}</div>
         <div class="email-preview">${escHtml(e.summary)}</div>
-        ${(e.actions||[]).length ? `<div class="email-tags"><span class="tag tag-hw">🔔 Action required</span></div>` : ''}
+        ${(e.tags||[]).map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')}
       </div>
     `).join('');
   } else {
@@ -731,8 +717,14 @@ document.getElementById('historyMonthPicker').addEventListener('change', functio
   renderHistory(this.value || undefined);
 });
 
-// Load shared todo state from GitHub, then render todo panels
+// Render todos immediately with empty state (so table shows even if GitHub load fails)
+renderTodosPanel();
+renderMyraTodosPanel();
+
+// Then load shared state from GitHub and re-render with tick marks
 loadTodoState().then(() => {
   renderTodosPanel();
   renderMyraTodosPanel();
+}).catch(() => {
+  // GitHub unavailable — table already rendered above, ticks just won't persist
 });
