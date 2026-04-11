@@ -1,0 +1,12 @@
+// Copy this to data/config.js and fill in your values.
+// data/config.js is gitignored — never commit it.
+//
+// GitHub token needs: Contents (read+write) on this repo only.
+// Create at: github.com/settings/tokens → Fine-grained tokens
+// Scopes: Repository permissions → Contents → Read and write
+
+window.DASHBOARD_CONFIG = {
+  githubOwner: "suruchigarg10",
+  githubRepo:  "school-dashboard",
+  githubToken: "github_pat_...",
+};

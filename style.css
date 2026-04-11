@@ -87,6 +87,33 @@ header {
   white-space: nowrap;
 }
 
+/* KID SWITCHER */
+.kid-switcher {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.kid-btn {
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--gray-600);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.kid-btn:hover { background: var(--gray-200); }
+
+.kid-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
 /* TABS */
 .tabs {
   max-width: 1100px;
@@ -525,6 +552,43 @@ input[type="month"] {
   font-family: inherit;
   color: var(--gray-600);
 }
+
+/* TODO PANEL */
+.todo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+.todo-item:last-child { border-bottom: none; }
+
+.todo-item .vc-label strong { font-weight: 600; display: block; }
+
+.todo-meta {
+  display: block;
+  font-size: 0.775rem;
+  color: var(--gray-400);
+  margin-top: 0.2rem;
+}
+
+.todo-done .vc-label strong,
+.todo-done .vc-label span { text-decoration: line-through; color: var(--gray-400); }
+
+.todo-done-section { border-top: 1px solid var(--gray-100); }
+
+.todo-done-header {
+  padding: 0.6rem 1.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-400);
+  cursor: pointer;
+  user-select: none;
+}
+.todo-done-header:hover { background: var(--gray-50); }
+
+.todo-done-list { display: none; }
+.todo-done-list.open { display: block; }
 
 /* RESPONSIVE */
 @media (max-width: 700px) {

@@ -49,6 +49,15 @@
       <!-- TODAY TAB -->
       <section id="tab-today" class="tab-content active">
         <div class="grid-2">
+
+          <div class="card full-width" id="todoPanel">
+            <div class="card-header">
+              <h2>✅ Action Items</h2>
+              <span class="badge-info" id="todoPanelMeta"></span>
+            </div>
+            <div id="todoList"><p class="muted">No action items.</p></div>
+          </div>
+
           <div class="card full-width">
             <div class="card-header">
               <h2>📋 Today's Summary</h2>
@@ -155,6 +164,15 @@
       <!-- MYRA TODAY TAB -->
       <section id="tab-myra-today" class="tab-content active">
         <div class="grid-2">
+
+          <div class="card full-width" id="myraTodoPanel">
+            <div class="card-header">
+              <h2>✅ Action Items</h2>
+              <span class="badge-info" id="myraTodoPanelMeta"></span>
+            </div>
+            <div id="myraTodoList"><p class="muted">No action items.</p></div>
+          </div>
+
           <div class="card full-width">
             <div class="card-header">
               <h2>📰 Today's Update</h2>
@@ -162,15 +180,6 @@
             </div>
             <div id="myraTodaySummary" class="summary-body">
               <p class="muted">No updates yet for today. Check back after 7 PM.</p>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <h2>✅ Action Items for Parents</h2>
-            </div>
-            <div id="myraActions">
-              <p class="muted">No actions required.</p>
             </div>
           </div>
 
@@ -190,7 +199,7 @@
         <div class="card">
           <div class="card-header">
             <h2>📖 Email History</h2>
-            <span class="badge-info">All Kunskappskolan emails, newest first</span>
+            <span class="badge-info">All Kunskapsskolan emails, newest first</span>
           </div>
           <div id="myraHistory">
             <p class="muted">No history yet.</p>
@@ -207,6 +216,7 @@
   </footer>
 
   <script src="data/dashboard-data.js"></script>
+  <script src="data/config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

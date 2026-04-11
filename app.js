@@ -5,11 +5,37 @@
 const DATA = window.DASHBOARD_DATA;
 const DAYS_OF_WEEK = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-// ── Tab switching ──────────────────────────────────────────
+// ── Kid Switcher ───────────────────────────────────────────
+const KID_CONFIG = {
+  arjun: { emoji: '🎒', subtitle: 'Arjun · Shiv Nadar · Grade 7' },
+  myra:  { emoji: '🌸', subtitle: 'Myra · Kunskapsskolan · KG' }
+};
+
+document.querySelectorAll('.kid-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const kid = btn.dataset.kid;
+    document.querySelectorAll('.kid-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.getElementById('arjun-tabs').style.display    = kid === 'arjun' ? '' : 'none';
+    document.getElementById('myra-tabs').style.display     = kid === 'myra'  ? '' : 'none';
+    document.getElementById('arjun-content').style.display = kid === 'arjun' ? '' : 'none';
+    document.getElementById('myra-content').style.display  = kid === 'myra'  ? '' : 'none';
+
+    document.getElementById('kidEmoji').textContent    = KID_CONFIG[kid].emoji;
+    document.getElementById('kidSubtitle').textContent = KID_CONFIG[kid].subtitle;
+  });
+});
+
+// ── Tab switching (scoped per kid) ─────────────────────────
 document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+    const nav = btn.closest('.tabs');
+    const contentArea = nav.id === 'arjun-tabs' ? 'arjun-content' : 'myra-content';
+
+    nav.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.getElementById(contentArea).querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
   });
@@ -168,9 +194,10 @@ function renderVeracrossChecklist() {
 // ── History Tab ────────────────────────────────────────────
 // Groups ALL emails across ALL days by section (General + per subject)
 // Within each section, shows entries sorted by date descending.
-function renderHistory() {
+function renderHistory(monthFilter) {
   const el = document.getElementById('historyList');
-  const allDays = [...DATA.days].sort((a,b) => b.date.localeCompare(a.date));
+  let allDays = [...DATA.days].sort((a,b) => b.date.localeCompare(a.date));
+  if (monthFilter) allDays = allDays.filter(d => d.date.startsWith(monthFilter));
 
   if (!allDays.length) {
     el.innerHTML = '<p class="muted">No history yet.</p>';
@@ -445,7 +472,146 @@ window.toggleMyraDay = function(i) {
   toggle.textContent = open ? '▲' : '▼';
 };
 
+// ── Todo State (GitHub-backed) ─────────────────────────────
+// todos-state.json lives in the repo: { "todoId": { done, doneAt } }
+// Reads/writes via GitHub Contents API so all devices stay in sync.
+
+const TODOS_PATH = "data/todos-state.json";
+let _todoState   = {};   // loaded from GitHub
+let _todosFileSha = "";  // needed for GitHub API updates
+
+async function loadTodoState() {
+  const cfg = window.DASHBOARD_CONFIG || {};
+  if (!cfg.githubToken) return;  // no token → read-only, ticks won't persist
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${cfg.githubOwner}/${cfg.githubRepo}/contents/${TODOS_PATH}`,
+      { headers: { Authorization: `token ${cfg.githubToken}`, Accept: "application/vnd.github+json" } }
+    );
+    if (!res.ok) return;
+    const json = await res.json();
+    _todosFileSha = json.sha;
+    _todoState = JSON.parse(atob(json.content.replace(/\n/g, "")));
+  } catch (e) { console.warn("Could not load todo state:", e); }
+}
+
+async function saveTodoState() {
+  const cfg = window.DASHBOARD_CONFIG || {};
+  if (!cfg.githubToken) return;
+  try {
+    const content = btoa(JSON.stringify(_todoState, null, 2));
+    const res = await fetch(
+      `https://api.github.com/repos/${cfg.githubOwner}/${cfg.githubRepo}/contents/${TODOS_PATH}`,
+      {
+        method: "PUT",
+        headers: { Authorization: `token ${cfg.githubToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `Update todo state [skip ci]`,
+          content,
+          sha: _todosFileSha,
+        }),
+      }
+    );
+    if (res.ok) {
+      const j = await res.json();
+      _todosFileSha = j.content.sha;
+    }
+  } catch (e) { console.warn("Could not save todo state:", e); }
+}
+
+function isTodoDone(id) {
+  return !!(_todoState[id]?.done);
+}
+
+async function toggleTodo(id, checkbox) {
+  const done = checkbox.checked;
+  _todoState[id] = done
+    ? { done: true,  doneAt: new Date().toISOString() }
+    : { done: false, doneAt: null };
+  await saveTodoState();
+  // Re-render both panels so counts update
+  renderTodosPanel();
+  renderMyraTodosPanel();
+}
+
+// Collect ALL todoItems across all days for a kid
+function collectAllTodos(kid) {
+  const items = [];
+  if (kid === "arjun") {
+    DATA.days.forEach(day => {
+      (day.emails || []).forEach(email => {
+        (email.todoItems || []).forEach(t => items.push({ ...t, date: day.date }));
+      });
+    });
+  } else {
+    (DATA.myra?.days || []).forEach(day => {
+      (day.emails || []).forEach(email => {
+        (email.todoItems || []).forEach(t => items.push({ ...t, date: day.date }));
+      });
+    });
+  }
+  return items;
+}
+
+function renderTodoItems(containerId, metaId, todos) {
+  const el   = document.getElementById(containerId);
+  const meta = document.getElementById(metaId);
+  if (!todos.length) {
+    el.innerHTML = '<p class="muted">No action items.</p>';
+    if (meta) meta.textContent = "";
+    return;
+  }
+
+  const open   = todos.filter(t => !isTodoDone(t.id));
+  const closed = todos.filter(t =>  isTodoDone(t.id));
+
+  if (meta) meta.textContent = `${open.length} open · ${closed.length} done`;
+
+  const renderItem = (t) => {
+    const done = isTodoDone(t.id);
+    const doneAt = _todoState[t.id]?.doneAt
+      ? " · done " + new Date(_todoState[t.id].doneAt).toLocaleDateString("en-IN", { day:"numeric", month:"short" })
+      : "";
+    return `
+      <div class="todo-item ${done ? "todo-done" : ""}">
+        <input type="checkbox" class="vc-checkbox" id="td-${t.id}"
+          ${done ? "checked" : ""}
+          onchange="toggleTodo('${t.id}', this)">
+        <label class="vc-label" for="td-${t.id}">
+          <strong>${escHtml(t.text)}</strong>
+          <span class="todo-meta">
+            ${t.dueDate ? `📅 Due ${escHtml(t.dueDate)}` : ""}
+            ${t.source  ? `· ${escHtml(t.source)}` : ""}
+            ${done ? `<span class="hw-done-time">✅${doneAt}</span>` : ""}
+          </span>
+        </label>
+      </div>`;
+  };
+
+  let html = open.map(renderItem).join("");
+  if (closed.length) {
+    html += `<div class="todo-done-section">
+      <div class="todo-done-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        ✅ ${closed.length} completed <span style="font-size:0.7rem;color:var(--gray-400)">▼</span>
+      </div>
+      <div class="todo-done-list">${closed.map(renderItem).join("")}</div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderTodosPanel() {
+  const todos = collectAllTodos("arjun");
+  renderTodoItems("todoList", "todoPanelMeta", todos);
+}
+
+function renderMyraTodosPanel() {
+  const todos = collectAllTodos("myra");
+  renderTodoItems("myraTodoList", "myraTodoPanelMeta", todos);
+}
+
 // ── Init ───────────────────────────────────────────────────
+// Synchronous renders first
 renderHeader();
 renderTodaySubjects();
 renderTodaySummary();
@@ -457,3 +623,13 @@ renderTopicLog();
 renderVeracrossTab();
 renderTimetable();
 renderMyra();
+
+document.getElementById('historyMonthPicker').addEventListener('change', function() {
+  renderHistory(this.value || undefined);
+});
+
+// Load shared todo state from GitHub, then render todo panels
+loadTodoState().then(() => {
+  renderTodosPanel();
+  renderMyraTodosPanel();
+});
