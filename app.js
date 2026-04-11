@@ -1,9 +1,17 @@
 // ============================================================
-// app.js — Arjun's School Dashboard Frontend Logic
+// app.js — School Dashboard Frontend Logic v2
 // ============================================================
 
 const DATA = window.DASHBOARD_DATA;
 const DAYS_OF_WEEK = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+// ── Subject emojis ─────────────────────────────────────────
+const SUBJECT_EMOJI = {
+  'Math': '🔢', 'English': '📖', 'Hindi': '🪷',
+  'Social Science': '🌍', 'Physics': '⚡', 'Chemistry': '🧪',
+  'Biology': '🌿', 'IT': '💻', 'Spanish': '🇪🇸', 'General': '📢'
+};
+function subjectEmoji(s) { return SUBJECT_EMOJI[s] || '📚'; }
 
 // ── Kid Switcher ───────────────────────────────────────────
 const KID_CONFIG = {
@@ -16,12 +24,10 @@ document.querySelectorAll('.kid-btn').forEach(btn => {
     const kid = btn.dataset.kid;
     document.querySelectorAll('.kid-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-
     document.getElementById('arjun-tabs').style.display    = kid === 'arjun' ? '' : 'none';
     document.getElementById('myra-tabs').style.display     = kid === 'myra'  ? '' : 'none';
     document.getElementById('arjun-content').style.display = kid === 'arjun' ? '' : 'none';
     document.getElementById('myra-content').style.display  = kid === 'myra'  ? '' : 'none';
-
     document.getElementById('kidEmoji').textContent    = KID_CONFIG[kid].emoji;
     document.getElementById('kidSubtitle').textContent = KID_CONFIG[kid].subtitle;
   });
@@ -32,10 +38,8 @@ document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => {
     const nav = btn.closest('.tabs');
     const contentArea = nav.id === 'arjun-tabs' ? 'arjun-content' : 'myra-content';
-
     nav.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
     document.getElementById(contentArea).querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
-
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
   });
@@ -46,13 +50,44 @@ function formatDate(isoStr) {
   const d = new Date(isoStr);
   return d.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 }
+function todayISO() { return new Date().toISOString().split('T')[0]; }
+function todayDayName() { return DAYS_OF_WEEK[new Date().getDay()]; }
 
-function todayISO() {
-  return new Date().toISOString().split('T')[0];
+function formatRelative(isoStr) {
+  const diff = Date.now() - new Date(isoStr).getTime();
+  if (diff < 60000)    return 'just now';
+  if (diff < 3600000)  return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  return new Date(isoStr).toLocaleDateString('en-IN');
 }
 
-function todayDayName() {
-  return DAYS_OF_WEEK[new Date().getDay()];
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDueDate(d) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }); }
+  catch { return d; }
+}
+
+function isDueSoon(d) {
+  if (!d) return false;
+  const diff = new Date(d) - new Date();
+  return diff >= 0 && diff < 3 * 86400000;
+}
+
+function isOverdue(d) {
+  if (!d) return false;
+  return new Date(d) < new Date();
+}
+
+// Stable hash for email anchors
+function emailAnchorId(date, from, subject) {
+  let h = 0;
+  for (const c of `${date}|${from}|${subject}`) h = Math.imul(31, h) + c.charCodeAt(0) | 0;
+  return 'em-' + Math.abs(h).toString(16).padStart(8, '0');
 }
 
 // ── Header ─────────────────────────────────────────────────
@@ -61,30 +96,16 @@ function renderHeader() {
   document.getElementById('headerMeta').innerHTML =
     `${now.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' })}<br>
      <span style="color:#10b981;font-weight:600">${DATA.meta.lastUpdated ? 'Updated ' + formatRelative(DATA.meta.lastUpdated) : 'Not yet updated today'}</span>`;
-
   document.getElementById('todayDate').textContent =
     now.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 }
 
-function formatRelative(isoStr) {
-  const diff = Date.now() - new Date(isoStr).getTime();
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
-  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
-  return new Date(isoStr).toLocaleDateString('en-IN');
-}
-
 // ── Today's Subjects ───────────────────────────────────────
 function renderTodaySubjects() {
-  const day = todayDayName();
+  const day      = todayDayName();
   const subjects = DATA.timetable[day] || [];
-  const el = document.getElementById('todaySubjects');
-
-  if (!subjects.length) {
-    el.innerHTML = '<p class="muted">No school today 🎉</p>';
-    return;
-  }
-
+  const el       = document.getElementById('todaySubjects');
+  if (!subjects.length) { el.innerHTML = '<p class="muted">No school today 🎉</p>'; return; }
   el.innerHTML = subjects.map(s => {
     const isCore = DATA.coreSubjects.includes(s);
     return `<span class="chip ${isCore ? 'chip-core' : 'chip-activity'}">${s}</span>`;
@@ -95,90 +116,44 @@ function renderTodaySubjects() {
 function renderTodaySummary() {
   const today = todayISO();
   const entry = DATA.days.find(d => d.date === today);
-  const el = document.getElementById('todaySummary');
-
+  const el    = document.getElementById('todaySummary');
   if (!entry) {
     el.innerHTML = `<p class="muted">No updates yet for today. The dashboard updates at 7 PM each evening.</p>`;
     return;
   }
-
   el.innerHTML = `<div style="white-space:pre-wrap;font-size:0.875rem;line-height:1.7">${escHtml(entry.summary)}</div>`;
 }
 
 // ── Today's Emails ─────────────────────────────────────────
 function renderTodayEmails() {
-  const today = todayISO();
-  const entry = DATA.days.find(d => d.date === today);
-  const el = document.getElementById('todayEmails');
-
+  const today  = todayISO();
+  const entry  = DATA.days.find(d => d.date === today);
+  const el     = document.getElementById('todayEmails');
   const emails = entry?.emails || [];
-  if (!emails.length) {
-    el.innerHTML = '<p class="muted">No school emails processed yet today.</p>';
-    return;
-  }
-
+  if (!emails.length) { el.innerHTML = '<p class="muted">No school emails processed yet today.</p>'; return; }
   el.innerHTML = emails.map(e => `
     <div class="email-item">
       <div class="email-subject">${escHtml(e.subject)}</div>
       <div class="email-from">From: ${escHtml(e.from)}</div>
       <div class="email-preview">${escHtml(e.summary)}</div>
-      <div class="email-tags">
-        ${(e.tags||[]).map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')}
-      </div>
-    </div>
-  `).join('');
+      <div class="email-tags">${(e.tags||[]).map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')}</div>
+    </div>`).join('');
 }
 
 function tagLabel(t) {
-  return { hw:'Homework', test:'Test/Quiz', chapter:'Chapter', announcement:'Announcement', veracross:'Veracross' }[t] || t;
+  return {hw:'Homework',test:'Test/Quiz',chapter:'Chapter',announcement:'Announcement',veracross:'Veracross'}[t] || t;
 }
 
-// ── Veracross Checklist ────────────────────────────────────
-// Homework Tracker
-function renderHomework() {
-  const today = todayISO();
-  const entry = DATA.days.find(d => d.date === today);
-  const el    = document.getElementById('homeworkList');
-  const items = entry?.homeworkItems || [];
-
-  if (!items.length) {
-    el.innerHTML = '<p class="muted">No homework assigned yet today.</p>';
-    return;
-  }
-
-  const done    = items.filter(h => h.done).length;
-  const pending = items.length - done;
-
-  let html = '<div class="hw-summary">';
-  html += '<span class="hw-stat hw-done-stat">✅ ' + done + ' done</span>';
-  if (pending) html += '<span class="hw-stat hw-pending-stat">⏳ ' + pending + ' pending</span>';
-  html += '</div>';
-
-  html += items.map((h, i) => `
-    <div class="vc-item ${h.done ? 'hw-item-done' : ''}">
-      <input type="checkbox" class="vc-checkbox" id="hw-${i}" ${h.done ? 'checked' : ''} disabled>
-      <label class="vc-label" for="hw-${i}">
-        <strong>${escHtml(h.subject)}</strong>
-        <span>${escHtml(h.description)}</span>
-        ${h.dueDate ? '<span class="hw-due">📅 Due: ' + escHtml(h.dueDate) + '</span>' : ''}
-        ${h.done && h.doneAt ? '<span class="hw-done-time">✅ Done at ' + new Date(h.doneAt).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) + '</span>' : ''}
-      </label>
-    </div>
-  `).join('');
-
-  el.innerHTML = html;
-}
-
+// ── Veracross ─────────────────────────────────────────────
 function vcItemId(date, action) {
-  // Stable ID for a veracross item — same system as todoItems
   let h = 0;
   for (const c of `vc-${date}-${action}`) h = Math.imul(31, h) + c.charCodeAt(0) | 0;
   return 'vc-' + Math.abs(h).toString(16).padStart(8, '0');
 }
 
 function renderVcItem(item, date) {
-  const id   = vcItemId(date, item.action);
-  const done = isTodoDone(id);
+  const id    = vcItemId(date, item.action);
+  const done  = isTodoDone(id);
   const doneAt = _todoState[id]?.doneAt
     ? new Date(_todoState[id].doneAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })
     : '';
@@ -196,14 +171,13 @@ function renderVcItem(item, date) {
 }
 
 window.toggleVcItem = async function(id, checkbox) {
-  const done = checkbox.checked;
-  _todoState[id] = done
-    ? { done: true,  doneAt: new Date().toISOString() }
-    : { done: false, doneAt: null };
-  await saveTodoState();
+  const done  = checkbox.checked;
+  const doneAt = done ? new Date().toISOString() : null;
+  _todoState[id] = { done, doneAt };
+  await _persistTodo(id, done, doneAt);
   renderVeracrossChecklist();
   renderVeracrossTab();
-  renderTodosPanel(); // VC section in action items updates too
+  renderTodosPanel();
 };
 
 function renderVeracrossChecklist() {
@@ -211,71 +185,51 @@ function renderVeracrossChecklist() {
   const entry = DATA.days.find(d => d.date === today);
   const el    = document.getElementById('veracrossChecklist');
   const items = entry?.veracrossItems || [];
-
-  if (!items.length) {
-    el.innerHTML = '<p class="muted">No Veracross action items for today.</p>';
-    return;
-  }
+  if (!items.length) { el.innerHTML = '<p class="muted">No Veracross action items for today.</p>'; return; }
   el.innerHTML = items.map(item => renderVcItem(item, today)).join('');
 }
 
 // ── History Tab ────────────────────────────────────────────
-// Groups ALL emails across ALL days by section (General + per subject)
-// Within each section, shows entries sorted by date descending.
 function renderHistory(monthFilter) {
-  const el = document.getElementById('historyList');
-  let allDays = [...DATA.days].sort((a,b) => b.date.localeCompare(a.date));
+  const el     = document.getElementById('historyList');
+  let allDays  = [...DATA.days].sort((a,b) => b.date.localeCompare(a.date));
   if (monthFilter) allDays = allDays.filter(d => d.date.startsWith(monthFilter));
 
-  if (!allDays.length) {
-    el.innerHTML = '<p class="muted">No history yet.</p>';
-    return;
-  }
+  if (!allDays.length) { el.innerHTML = '<p class="muted">No history yet.</p>'; return; }
 
-  // Build a flat list of { date, email } across all days
   const allEntries = [];
-  allDays.forEach(day => {
-    (day.emails || []).forEach(email => {
-      allEntries.push({ date: day.date, email });
-    });
-  });
+  allDays.forEach(day => (day.emails || []).forEach(email => allEntries.push({ date: day.date, email })));
 
-  // Group by section: null → General, else subject name
-  const sections = {}; // key: "General" or subject name
+  const sections = {};
   allEntries.forEach(({ date, email }) => {
     const key = email.schoolSubject || 'General';
     if (!sections[key]) sections[key] = [];
     sections[key].push({ date, email });
   });
 
-  // Order: General first, then subjects in coreSubjects order
   const sectionOrder = ['General', ...DATA.coreSubjects];
-  const orderedKeys = [
+  const orderedKeys  = [
     ...sectionOrder.filter(k => sections[k]),
     ...Object.keys(sections).filter(k => !sectionOrder.includes(k))
   ];
 
-  const sectionEmoji = {
-    'General': '📢', 'Math': '🔢', 'English': '📖', 'Hindi': '🪷',
-    'Social Science': '🌍', 'Physics': '⚡', 'Chemistry': '🧪',
-    'Biology': '🌿', 'IT': '💻', 'Spanish': '🇪🇸'
-  };
-
   el.innerHTML = orderedKeys.map((sectionKey, si) => {
     const entries = sections[sectionKey].sort((a,b) => b.date.localeCompare(a.date));
-    const emoji = sectionEmoji[sectionKey] || '📚';
+    const emoji   = subjectEmoji(sectionKey);
 
-    const rows = entries.map(({ date, email }) => `
-      <div class="hist-section-entry">
-        <div class="hist-entry-date">${formatDate(date)}</div>
-        <div class="hist-entry-content">
-          <div class="email-subject">${escHtml(email.subject)}</div>
-          <div class="email-from">${escHtml(email.from)}</div>
-          <div class="email-preview">${escHtml(email.summary)}</div>
-          <div class="email-tags">${(email.tags||[]).map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')}</div>
-        </div>
-      </div>
-    `).join('');
+    const rows = entries.map(({ date, email }) => {
+      const anchorId = emailAnchorId(date, email.from, email.subject);
+      return `
+        <div class="hist-section-entry email-item" id="${anchorId}">
+          <div class="hist-entry-date">${formatDate(date)}</div>
+          <div class="hist-entry-content">
+            <div class="email-subject">${escHtml(email.subject)}</div>
+            <div class="email-from">${escHtml(email.from)}</div>
+            <div class="email-preview">${escHtml(email.summary)}</div>
+            <div class="email-tags">${(email.tags||[]).map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')}</div>
+          </div>
+        </div>`;
+    }).join('');
 
     return `
       <div class="hist-section">
@@ -284,71 +238,267 @@ function renderHistory(monthFilter) {
           <span class="hist-section-count">${entries.length} update${entries.length !== 1 ? 's' : ''}</span>
           <span class="hist-section-toggle" id="hst-toggle-${si}">▲</span>
         </div>
-        <div class="hist-section-body open" id="hst-body-${si}">
-          ${rows}
-        </div>
-      </div>
-    `;
+        <div class="hist-section-body open" id="hst-body-${si}">${rows}</div>
+      </div>`;
   }).join('');
 }
 
 window.toggleHistSection = function(i) {
-  const body = document.getElementById('hst-body-' + i);
+  const body   = document.getElementById('hst-body-' + i);
   const toggle = document.getElementById('hst-toggle-' + i);
-  const open = body.classList.toggle('open');
+  const open   = body.classList.toggle('open');
   toggle.textContent = open ? '▲' : '▼';
 };
 
 // ── Topic Log Tab ──────────────────────────────────────────
 function renderTopicLog() {
-  const el = document.getElementById('topicLog');
+  const el       = document.getElementById('topicLog');
   const subjects = DATA.coreSubjects;
 
-  if (!DATA.topicLog.length) {
-    el.innerHTML = '<p class="muted">Topics will appear here as teacher emails are processed.</p>';
+  // Group topics by subject
+  const bySubject = {};
+  (DATA.topicLog || []).forEach(t => {
+    if (!bySubject[t.subject]) bySubject[t.subject] = [];
+    bySubject[t.subject].push(t);
+  });
+
+  const hasAnyTopics = Object.keys(bySubject).length > 0;
+
+  if (!hasAnyTopics) {
+    el.innerHTML = `
+      <div class="waiting-school-state">
+        <span class="waiting-icon">📬</span>
+        <p>Waiting for update from school</p>
+        <p class="muted">Topics will appear here as teacher emails are processed by the nightly fetch script</p>
+      </div>`;
     return;
   }
 
   el.innerHTML = subjects.map((subject, si) => {
-    const entries = DATA.topicLog
-      .filter(t => t.subject === subject)
-      .sort((a,b) => b.date.localeCompare(a.date));
+    const topics = (bySubject[subject] || []).sort((a,b) => b.date.localeCompare(a.date));
+    if (!topics.length) return '';
 
-    if (!entries.length) return '';
+    const topicTexts     = topics.map(t => t.topic);
+    const topicsJsonAttr = escHtml(JSON.stringify(topicTexts));
 
     return `
       <div class="subject-section">
-        <div class="subject-title" onclick="toggleTopics(${si})">
-          <h3>${subject}</h3>
-          <span class="topic-count">${entries.length} topic(s)</span>
+        <div class="subject-section-header" onclick="toggleTopicSubject(${si})">
+          <div class="subject-section-title-row">
+            <span class="subject-emoji-large">${subjectEmoji(subject)}</span>
+            <h3>${subject}</h3>
+            <span class="topic-count-badge">${topics.length} topic${topics.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="subject-section-actions">
+            <button class="quiz-generate-btn-small" onclick="event.stopPropagation(); openQuizFlow('${escHtml(subject)}', JSON.parse(this.dataset.topics))" data-topics="${topicsJsonAttr}">
+              🎯 Generate Quiz
+            </button>
+            <span class="topic-toggle-arrow" id="topic-toggle-${si}">▲</span>
+          </div>
         </div>
-        <div class="topic-entries" id="topics-${si}">
-          ${entries.map(e => `
-            <div class="topic-entry">
-              <span class="topic-entry-date">${e.date}</span>
-              <span class="topic-entry-text">${escHtml(e.topic)}</span>
-            </div>
-          `).join('')}
+        <div class="topic-list-body open" id="topic-list-${si}">
+          <div class="past-quiz-scores" id="quiz-scores-${si}">
+            <span class="quiz-scores-loading muted" style="font-size:0.8rem">Loading past scores…</span>
+          </div>
+          <div class="topic-entries-grid">
+            ${topics.map(t => `
+              <div class="topic-entry-row">
+                <span class="topic-entry-date">${t.date}</span>
+                <span class="topic-entry-text">${escHtml(t.topic)}</span>
+              </div>`).join('')}
+          </div>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
+
+  // Load past quiz scores for each subject async
+  subjects.forEach((subject, si) => {
+    if (bySubject[subject]?.length) loadQuizScoresForSubject(subject, si);
+  });
 }
 
-window.toggleTopics = function(i) {
-  document.getElementById('topics-' + i).classList.toggle('open');
+window.toggleTopicSubject = function(i) {
+  const body   = document.getElementById('topic-list-' + i);
+  const toggle = document.getElementById('topic-toggle-' + i);
+  const open   = body.classList.toggle('open');
+  toggle.textContent = open ? '▲' : '▼';
 };
+
+async function loadQuizScoresForSubject(subject, si) {
+  const el = document.getElementById('quiz-scores-' + si);
+  if (!el) return;
+  try {
+    const res = await fetch('/api/quiz/scores?subject=' + encodeURIComponent(subject));
+    if (!res.ok) { el.innerHTML = ''; return; }
+    const scores = await res.json();
+    if (!scores.length) { el.innerHTML = ''; return; }
+    const recent = scores[0];
+    const pct    = Math.round((recent.score / recent.total) * 100);
+    const badge  = pct >= 80 ? 'quiz-score-high' : pct >= 60 ? 'quiz-score-mid' : 'quiz-score-low';
+    el.innerHTML = `
+      <div class="quiz-score-strip">
+        <span class="quiz-score-label">Last quiz:</span>
+        <span class="quiz-score-pill ${badge}">${recent.score}/${recent.total} · ${pct}%</span>
+        <span class="quiz-score-date muted">${new Date(recent.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short'})}</span>
+      </div>`;
+  } catch { el.innerHTML = ''; }
+}
+
+// ── Exam Schedule Tab ──────────────────────────────────────
+const EXAM_TYPE_META = {
+  'UT1':       { label: 'Unit Test 1',   color: '#3b82f6', emoji: '📝' },
+  'UT2':       { label: 'Unit Test 2',   color: '#8b5cf6', emoji: '📝' },
+  'MidTerm':   { label: 'Mid Term',      color: '#f59e0b', emoji: '📋' },
+  'FinalTerm': { label: 'Final Term',    color: '#ef4444', emoji: '🏁' },
+  'ClassTest': { label: 'Class Test',    color: '#10b981', emoji: '✏️' },
+  'Other':     { label: 'Other',         color: '#6b7280', emoji: '📌' },
+};
+
+function renderExamSchedule() {
+  const el    = document.getElementById('examScheduleContainer');
+  const exams = DATA.examSchedule || [];
+
+  if (!exams.length) {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-header"><h2>📝 Exam Schedule</h2><span class="badge-info">From school emails only</span></div>
+        <div class="waiting-school-state">
+          <span class="waiting-icon">📬</span>
+          <p>Waiting for update from school</p>
+          <p class="muted">Exam schedules will appear here when received via email</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const today = todayISO();
+
+  // Group by exam type
+  const byType = {};
+  exams.forEach(e => {
+    const t = e.examType || 'Other';
+    if (!byType[t]) byType[t] = [];
+    byType[t].push(e);
+  });
+
+  const typeOrder = ['UT1','UT2','MidTerm','FinalTerm','ClassTest','Other'];
+  const orderedTypes = [
+    ...typeOrder.filter(t => byType[t]),
+    ...Object.keys(byType).filter(t => !typeOrder.includes(t))
+  ];
+
+  const html = orderedTypes.map(type => {
+    const meta  = EXAM_TYPE_META[type] || EXAM_TYPE_META['Other'];
+    const items = byType[type].sort((a,b) => a.examDate.localeCompare(b.examDate));
+    const rows  = items.map(e => {
+      const daysLeft = Math.ceil((new Date(e.examDate) - new Date()) / 86400000);
+      const isPast   = daysLeft < 0;
+      const isToday  = e.examDate === today;
+      let countdownHtml = '';
+      if (isToday)       countdownHtml = '<span class="exam-countdown today-exam">Today!</span>';
+      else if (isPast)   countdownHtml = '<span class="exam-countdown past-exam">Done</span>';
+      else if (daysLeft <= 7) countdownHtml = `<span class="exam-countdown soon-exam">${daysLeft}d</span>`;
+      else                    countdownHtml = `<span class="exam-countdown future-exam">${daysLeft}d</span>`;
+
+      return `
+        <tr class="${isPast ? 'exam-row-past' : isToday ? 'exam-row-today' : ''}">
+          <td class="exam-date-cell">${formatDate(e.examDate)}</td>
+          <td class="exam-subject-cell"><strong>${escHtml(e.subject)}</strong></td>
+          <td class="exam-topics-cell">${escHtml(e.topics || '—')}</td>
+          <td class="exam-countdown-cell">${countdownHtml}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-header exam-type-header" style="border-left:4px solid ${meta.color}">
+          <h2>${meta.emoji} ${meta.label}</h2>
+          <span class="badge-info">${items.length} exam${items.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="exam-table-wrap">
+          <table class="exam-table">
+            <thead><tr><th>Date</th><th>Subject</th><th>Topics</th><th>Countdown</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="card-header" style="padding:1.5rem 0 0.5rem">
+      <h2>📝 Exam Schedule</h2>
+      <span class="badge-info">From school emails only · Never invented</span>
+    </div>
+    ${html}`;
+}
+
+// ── Holiday Calendar Tab ───────────────────────────────────
+function renderHolidays() {
+  const el       = document.getElementById('holidayContainer');
+  const holidays = (DATA.holidays || []).sort((a,b) => a.date.localeCompare(b.date));
+  const today    = todayISO();
+
+  if (!holidays.length) {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-header"><h2>🎉 Holiday Calendar</h2><span class="badge-info">From school emails only</span></div>
+        <div class="waiting-school-state">
+          <span class="waiting-icon">📬</span>
+          <p>Waiting for update from school</p>
+          <p class="muted">Holiday calendar will appear here when the school circular or attachment is processed</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const upcoming = holidays.filter(h => h.date >= today);
+  const past     = holidays.filter(h => h.date  < today);
+
+  function renderHolidayList(list) {
+    return list.map(h => {
+      const daysLeft   = Math.ceil((new Date(h.date) - new Date()) / 86400000);
+      const isPast     = h.date < today;
+      const isToday    = h.date === today;
+      const daysLabel  = isToday ? 'Today!' : isPast ? '' : `in ${daysLeft}d`;
+      return `
+        <div class="holiday-row ${isPast ? 'holiday-past' : isToday ? 'holiday-today' : ''}">
+          <div class="holiday-date-block">
+            <span class="holiday-month">${new Date(h.date).toLocaleDateString('en-IN',{month:'short'})}</span>
+            <span class="holiday-day-num">${new Date(h.date).getDate()}</span>
+          </div>
+          <div class="holiday-info">
+            <span class="holiday-name">${escHtml(h.name)}</span>
+            <span class="holiday-weekday muted">${new Date(h.date).toLocaleDateString('en-IN',{weekday:'long'})}</span>
+          </div>
+          ${daysLabel ? `<span class="holiday-countdown ${isToday ? 'today-badge' : ''}">${daysLabel}</span>` : ''}
+        </div>`;
+    }).join('');
+  }
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h2>🎉 Holiday Calendar</h2>
+        <span class="badge-info">${holidays.length} holiday${holidays.length !== 1 ? 's' : ''} · Shiv Nadar</span>
+      </div>
+      ${upcoming.length ? `
+        <div class="holiday-section-label">Upcoming</div>
+        <div class="holiday-list">${renderHolidayList(upcoming)}</div>` : ''}
+      ${past.length ? `
+        <div class="holiday-section-label muted">Past</div>
+        <div class="holiday-list holiday-list-past">${renderHolidayList(past)}</div>` : ''}
+    </div>`;
+}
 
 // ── Veracross Tab ──────────────────────────────────────────
 function renderVeracrossTab() {
   const el = document.getElementById('veracrossLog');
   if (!DATA.veracrossLog.length) {
-    el.innerHTML = '<p class="muted">No Veracross notification emails detected yet.</p>';
+    el.innerHTML = '<p class="muted" style="padding:0 1.5rem 1rem">No Veracross notification emails detected yet.</p>';
     return;
   }
-
   el.innerHTML = DATA.veracrossLog.map(entry => {
-    const items   = entry.items || [];
+    const items     = entry.items || [];
     const doneCount = items.filter(item => isTodoDone(vcItemId(entry.date, item.action))).length;
     return `
       <div class="history-day">
@@ -372,20 +522,13 @@ function renderFooter() {
     DATA.meta.lastUpdated ? formatDate(DATA.meta.lastUpdated) : 'Never';
 }
 
-// ── Escape HTML ────────────────────────────────────────────
-function escHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 // ── Timetable Tab ─────────────────────────────────────────
 function renderTimetable() {
-  const el = document.getElementById('timetableGrid');
+  const el    = document.getElementById('timetableGrid');
   const today = todayDayName();
   const days  = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
   const slots = DATA.timetableSlots || [];
 
-  // Build full per-day arrays: fixed slots filled in, teaching slots from timetable
   function buildFullDay(day) {
     const teaching = [...(DATA.timetable[day] || [])];
     return slots.map(slot => {
@@ -394,15 +537,12 @@ function renderTimetable() {
     });
   }
 
-  // Time label column + day columns
   let html = '<div class="timetable-grid timetable-grid-with-times">';
 
   // Time label column
   html += '<div class="tt-time-col">';
   html += '<div class="tt-day-header">Time</div>';
-  slots.forEach(slot => {
-    html += `<div class="tt-period tt-time-label">${slot.time}</div>`;
-  });
+  slots.forEach(slot => { html += `<div class="tt-period tt-time-label">${slot.time}</div>`; });
   html += '</div>';
 
   // Day columns
@@ -410,18 +550,14 @@ function renderTimetable() {
     const isToday = day === today;
     html += `<div class="tt-day-col">`;
     html += `<div class="tt-day-header ${isToday ? 'today-col' : ''}">${day}${isToday ? '<span class="tt-today-badge">Today</span>' : ''}</div>`;
-
     buildFullDay(day).forEach(({ subject, fixed }) => {
-      if (fixed) {
-        html += `<div class="tt-period tt-fixed">${subject}</div>`;
-      } else if (!subject) {
-        html += `<div class="tt-period"></div>`;
-      } else {
+      if (fixed)        html += `<div class="tt-period tt-fixed">${subject}</div>`;
+      else if (!subject) html += `<div class="tt-period"></div>`;
+      else {
         const isCore = DATA.coreSubjects.includes(subject);
         html += `<div class="tt-period ${isCore ? 'core' : 'activity'}">${subject}</div>`;
       }
     });
-
     html += '</div>';
   });
 
@@ -429,45 +565,35 @@ function renderTimetable() {
   el.innerHTML = html;
 }
 
-// ── Myra Tab ──────────────────────────────────────────────────
+// ── Myra Tab ──────────────────────────────────────────────
 function renderMyra() {
-  const myra  = DATA.myra || {};
-  const today = todayISO();
-  const days  = (myra.days || []).sort((a,b) => b.date.localeCompare(a.date));
+  const myra       = DATA.myra || {};
+  const today      = todayISO();
+  const days       = (myra.days || []).sort((a,b) => b.date.localeCompare(a.date));
   const todayEntry = days.find(d => d.date === today);
 
-  // Date badge
   document.getElementById('myraTodayDate').textContent =
     new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' });
 
-  // Today's summary
   const sumEl = document.getElementById('myraTodaySummary');
   sumEl.innerHTML = todayEntry?.summary
     ? `<div style="white-space:pre-wrap;font-size:0.875rem;line-height:1.7">${escHtml(todayEntry.summary)}</div>`
     : '<p class="muted">No updates yet for today. Check back after 7 PM.</p>';
 
-  // Today's emails
-  const emailEl = document.getElementById('myraEmails');
+  const emailEl     = document.getElementById('myraEmails');
   const todayEmails = todayEntry?.emails || [];
-  if (todayEmails.length) {
-    emailEl.innerHTML = todayEmails.map(e => `
-      <div class="email-item">
-        <div class="email-subject">${escHtml(e.subject)}</div>
-        <div class="email-from">${escHtml(e.from)}</div>
-        <div class="email-preview">${escHtml(e.summary)}</div>
-        ${(e.tags||[]).map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')}
-      </div>
-    `).join('');
-  } else {
-    emailEl.innerHTML = '<p class="muted">No emails today.</p>';
-  }
+  emailEl.innerHTML = todayEmails.length
+    ? todayEmails.map(e => `
+        <div class="email-item">
+          <div class="email-subject">${escHtml(e.subject)}</div>
+          <div class="email-from">${escHtml(e.from)}</div>
+          <div class="email-preview">${escHtml(e.summary)}</div>
+          ${(e.tags||[]).map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')}
+        </div>`).join('')
+    : '<p class="muted">No emails today.</p>';
 
-  // Full history — all days, newest first
   const histEl = document.getElementById('myraHistory');
-  if (!days.length) {
-    histEl.innerHTML = '<p class="muted">No history yet.</p>';
-    return;
-  }
+  if (!days.length) { histEl.innerHTML = '<p class="muted">No history yet.</p>'; return; }
 
   histEl.innerHTML = days.map((day, i) => {
     const allActions = (day.emails||[]).flatMap(e => e.actions || []);
@@ -486,11 +612,9 @@ function renderMyra() {
               <div class="email-from">${escHtml(e.from)}</div>
               <div class="email-preview">${escHtml(e.summary)}</div>
               ${(e.actions||[]).map(a => `<div class="myra-action">🔔 ${escHtml(a)}</div>`).join('')}
-            </div>
-          `).join('')}
+            </div>`).join('')}
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 
@@ -501,113 +625,116 @@ window.toggleMyraDay = function(i) {
   toggle.textContent = open ? '▲' : '▼';
 };
 
-// ── Todo State (GitHub-backed) ─────────────────────────────
-// todos-state.json lives in the repo: { "todoId": { done, doneAt } }
-// Reads/writes via GitHub Contents API so all devices stay in sync.
+// ── Todo State (Express API-backed) ───────────────────────
+// Replaces the GitHub Contents API approach. The Express server
+// writes to SQLite; all devices share state as long as they
+// hit the same server instance.
 
-const TODOS_PATH = "data/todos-state.json";
-let _todoState   = {};   // loaded from GitHub
-let _todosFileSha = "";  // needed for GitHub API updates
+let _todoState = {};  // { id: { done, doneAt } }
 
 async function loadTodoState() {
-  const cfg = window.DASHBOARD_CONFIG || {};
-  if (!cfg.githubToken) return;  // no token → read-only, ticks won't persist
   try {
-    const res = await fetch(
-      `https://api.github.com/repos/${cfg.githubOwner}/${cfg.githubRepo}/contents/${TODOS_PATH}`,
-      { headers: { Authorization: `token ${cfg.githubToken}`, Accept: "application/vnd.github+json" } }
-    );
-    if (!res.ok) return;
-    const json = await res.json();
-    _todosFileSha = json.sha;
-    _todoState = JSON.parse(atob(json.content.replace(/\n/g, "")));
-  } catch (e) { console.warn("Could not load todo state:", e); }
+    const res = await fetch('/api/todos');
+    if (res.ok) _todoState = await res.json();
+  } catch (e) {
+    console.warn('Could not load todo state (server may not be running):', e.message);
+  }
 }
 
-async function saveTodoState() {
-  const cfg = window.DASHBOARD_CONFIG || {};
-  if (!cfg.githubToken) return;
+async function _persistTodo(id, done, doneAt) {
   try {
-    const content = btoa(JSON.stringify(_todoState, null, 2));
-    const res = await fetch(
-      `https://api.github.com/repos/${cfg.githubOwner}/${cfg.githubRepo}/contents/${TODOS_PATH}`,
-      {
-        method: "PUT",
-        headers: { Authorization: `token ${cfg.githubToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: `Update todo state [skip ci]`,
-          content,
-          sha: _todosFileSha,
-        }),
-      }
-    );
-    if (res.ok) {
-      const j = await res.json();
-      _todosFileSha = j.content.sha;
-    }
-  } catch (e) { console.warn("Could not save todo state:", e); }
+    await fetch(`/api/todos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done, doneAt }),
+    });
+  } catch (e) { console.warn('Could not persist todo:', e.message); }
 }
 
-function isTodoDone(id) {
-  return !!(_todoState[id]?.done);
-}
+function isTodoDone(id) { return !!(_todoState[id]?.done); }
 
 async function toggleTodo(id, checkbox) {
-  const done = checkbox.checked;
-  _todoState[id] = done
-    ? { done: true,  doneAt: new Date().toISOString() }
-    : { done: false, doneAt: null };
-  saveTodoState(); // fire and forget — don't block re-render
+  const done   = checkbox.checked;
+  const doneAt = done ? new Date().toISOString() : null;
+  _todoState[id] = { done, doneAt };
+  _persistTodo(id, done, doneAt); // fire and forget
   renderTodosPanel();
   renderMyraTodosPanel();
 }
 
-// Collect ALL todoItems across all days for a kid
-// Enriches each todo with: category, schoolSubject, emailDate
+// ── Collect todos with enrichment ─────────────────────────
+let _todoDateFilterDays = 30;   // 0 = all time
+
+window.setTodoDateFilter = function(days) {
+  _todoDateFilterDays = days;
+  renderTodosPanel();
+};
+
 function collectAllTodos(kid) {
   const items = [];
-  const days = kid === "arjun" ? DATA.days : (DATA.myra?.days || []);
-  days.forEach(day => {
-    (day.emails || []).forEach(email => {
-      const tags    = email.tags || [];
-      const subject = email.schoolSubject || null;
-      // Categorise by parent email tags
-      let category;
-      if (tags.includes("hw"))         category = "homework";
-      else if (tags.includes("veracross")) category = "veracross";
-      else                              category = "general";
+  const days  = kid === 'arjun' ? DATA.days : (DATA.myra?.days || []);
 
-      (email.todoItems || []).forEach(t => items.push({
+  // Compute cutoff date
+  let cutoff = '';
+  if (_todoDateFilterDays > 0) {
+    const d = new Date();
+    d.setDate(d.getDate() - _todoDateFilterDays);
+    cutoff = d.toISOString().split('T')[0];
+  }
+
+  days.forEach(day => {
+    if (cutoff && day.date < cutoff) return; // date filter
+    (day.emails || []).forEach(em => {
+      const tags    = em.tags || [];
+      const subject = em.schoolSubject || null;
+      let category;
+      if (tags.includes('hw'))          category = 'homework';
+      else if (tags.includes('veracross')) category = 'veracross';
+      else                              category = 'general';
+
+      (em.todoItems || []).forEach(t => items.push({
         ...t,
         date:         day.date,
         category,
         schoolSubject: subject,
+        emailSubject:  em.subject,
+        emailFrom:     em.from,
       }));
     });
   });
+
   return items;
 }
 
-function formatDueDate(d) {
-  if (!d) return '—';
-  try {
-    return new Date(d).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
-  } catch { return d; }
-}
+// ── Urgent banner (due today/tomorrow) ────────────────────
+function renderUrgentBanner(todos) {
+  const el      = document.getElementById('urgentBanner');
+  const today   = todayISO();
+  const tomDate = new Date(); tomDate.setDate(tomDate.getDate() + 1);
+  const tomorrow = tomDate.toISOString().split('T')[0];
 
-function isDueSoon(d) {
-  if (!d) return false;
-  const diff = new Date(d) - new Date();
-  return diff >= 0 && diff < 3 * 86400000; // within 3 days
-}
+  const urgent = todos.filter(t =>
+    !isTodoDone(t.id) &&
+    t.dueDate &&
+    (t.dueDate === today || t.dueDate === tomorrow)
+  );
 
-function isOverdue(d) {
-  if (!d) return false;
-  return new Date(d) < new Date() && !isTodoDone;
+  if (!urgent.length) { el.innerHTML = ''; return; }
+
+  const hasDueToday = urgent.some(t => t.dueDate === today);
+  el.innerHTML = `
+    <div class="urgent-banner">
+      <span class="urgent-icon">🔔</span>
+      <div class="urgent-content">
+        <strong>${urgent.length} item${urgent.length > 1 ? 's' : ''} due ${hasDueToday ? 'today' : 'tomorrow'}!</strong>
+        <ul>${urgent.map(t =>
+          `<li>${escHtml(t.text)}${t.dueDate === today ? ' <span class="today-badge">Today</span>' : ''}</li>`
+        ).join('')}</ul>
+      </div>
+    </div>`;
 }
 
 // ── Todo table helpers ─────────────────────────────────────
-
 function sortTodos(todos) {
   const open   = todos.filter(t => !isTodoDone(t.id));
   const closed = todos.filter(t =>  isTodoDone(t.id));
@@ -632,6 +759,11 @@ function renderRow(t, isDone) {
   const soon    = !isDone && isDueSoon(t.dueDate);
   const dueCls  = overdue ? 'todo-overdue' : soon ? 'todo-soon' : '';
 
+  // Compute anchor for source deep-link
+  const anchorId = t.emailFrom
+    ? emailAnchorId(t.date, t.emailFrom, t.emailSubject || '')
+    : '';
+
   return `
     <tr class="${isDone ? 'todo-row-done' : 'todo-row-open'}">
       <td class="todo-check-cell">
@@ -652,10 +784,9 @@ function renderRow(t, isDone) {
         ${soon && !overdue ? '<span class="todo-soon-badge">Soon</span>' : ''}
       </td>
       <td class="todo-source-cell">
-        <a href="#" class="todo-source-link"
-          onclick="jumpToHistory(); return false;">
-          ${escHtml(t.source || '—')}
-        </a>
+        ${anchorId
+          ? `<a href="#" class="todo-source-link" onclick="jumpToEmail('${anchorId}'); return false;">${escHtml(t.source || t.emailSubject || '—')}</a>`
+          : escHtml(t.source || '—')}
       </td>
     </tr>`;
 }
@@ -691,31 +822,43 @@ window.toggleDoneRows = function(el) {
   label.textContent = hidden ? 'hide' : 'show';
 };
 
-window.jumpToHistory = function() {
-  document.querySelectorAll('#arjun-tabs .tab').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('#arjun-content .tab-content').forEach(s => s.classList.remove('active'));
+// ── Deep-link: jump to email in History tab ───────────────
+window.jumpToEmail = function(anchorId) {
+  // Switch to History tab
   const histTab = document.querySelector('#arjun-tabs .tab[data-tab="history"]');
-  if (histTab) histTab.classList.add('active');
-  document.getElementById('tab-history').classList.add('active');
-  document.querySelectorAll('.hist-section-body').forEach(b => b.classList.add('open'));
+  if (histTab) histTab.click();
+  // Wait for render, then scroll and highlight
+  setTimeout(() => {
+    const el = document.getElementById(anchorId);
+    if (el) {
+      // Expand parent hist-section-body if collapsed
+      const body = el.closest('.hist-section-body');
+      if (body && !body.classList.contains('open')) body.classList.add('open');
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('email-highlight');
+      setTimeout(() => el.classList.remove('email-highlight'), 3000);
+    }
+  }, 200);
 };
 
 // ── Sectioned todo panel ───────────────────────────────────
-
-let _hwSubjectFilter = 'all'; // active homework subject filter
+let _hwSubjectFilter = 'all';
 
 function renderTodosPanel() {
-  const all = collectAllTodos("arjun");
-  const el  = document.getElementById("todoList");
-  const meta = document.getElementById("todoPanelMeta");
+  const all     = collectAllTodos('arjun');
+  const el      = document.getElementById('todoList');
+  const meta    = document.getElementById('todoPanelMeta');
 
-  const hw       = all.filter(t => t.category === 'homework');
-  const vc       = all.filter(t => t.category === 'veracross');
-  const general  = all.filter(t => t.category === 'general');
+  const hw      = all.filter(t => t.category === 'homework');
+  const vc      = all.filter(t => t.category === 'veracross');
+  const general = all.filter(t => t.category === 'general');
 
   const openCount = all.filter(t => !isTodoDone(t.id)).length;
   const doneCount = all.filter(t =>  isTodoDone(t.id)).length;
   if (meta) meta.textContent = `${openCount} open · ${doneCount} done`;
+
+  // 24h urgent banner
+  renderUrgentBanner(all);
 
   // Subject pills for homework filter
   const subjects = [...new Set(hw.map(t => t.schoolSubject).filter(Boolean))];
@@ -725,13 +868,21 @@ function renderTodosPanel() {
 
   const subjectPills = subjects.length > 1
     ? `<div class="todo-subject-pills">
-        <span class="subject-pill ${_hwSubjectFilter === 'all' ? 'active' : ''}"
-          onclick="setHwFilter('all')">All subjects</span>
-        ${subjects.map(s => `
-          <span class="subject-pill ${_hwSubjectFilter === s ? 'active' : ''}"
-            onclick="setHwFilter('${s}')">${s}</span>
-        `).join('')}
-      </div>` : '';
+        <span class="subject-pill ${_hwSubjectFilter === 'all' ? 'active' : ''}" onclick="setHwFilter('all')">All subjects</span>
+        ${subjects.map(s =>
+          `<span class="subject-pill ${_hwSubjectFilter === s ? 'active' : ''}" onclick="setHwFilter('${s}')">${s}</span>`
+        ).join('')}
+       </div>` : '';
+
+  if (!all.length) {
+    el.innerHTML = `
+      <div class="waiting-school-state" style="padding:2rem">
+        <span class="waiting-icon">📬</span>
+        <p>Waiting for update from school</p>
+        <p class="muted">Action items will appear here as school emails are processed</p>
+      </div>`;
+    return;
+  }
 
   el.innerHTML = `
     ${renderTodoSection('📚 Homework', hw, hwFiltered, subjectPills, 'hw-table', openCount)}
@@ -770,11 +921,17 @@ window.toggleTodoSection = function(header) {
 };
 
 function renderMyraTodosPanel() {
-  const todos = collectAllTodos("myra");
-  const el    = document.getElementById("myraTodoList");
-  const meta  = document.getElementById("myraTodoPanelMeta");
+  const todos = collectAllTodos('myra');
+  const el    = document.getElementById('myraTodoList');
+  const meta  = document.getElementById('myraTodoPanelMeta');
+
   if (!todos.length) {
-    el.innerHTML = '<p class="muted">No action items yet.</p>';
+    el.innerHTML = `
+      <div class="waiting-school-state" style="padding:2rem">
+        <span class="waiting-icon">📬</span>
+        <p>Waiting for update from school</p>
+        <p class="muted">Action items will appear here as school emails are processed</p>
+      </div>`;
     if (meta) meta.textContent = '';
     return;
   }
@@ -784,34 +941,231 @@ function renderMyraTodosPanel() {
   el.innerHTML = buildTable(todos, 'myra-todo-table');
 }
 
+// ══════════════════════════════════════════════════════════
+// QUIZ FLOW
+// ══════════════════════════════════════════════════════════
+
+let _quizState = null; // { subject, topics, questions, currentQ, answers }
+
+function _quizEl() { return document.getElementById('quizModal'); }
+
+window.handleQuizOverlayClick = function(e) {
+  // Close if user clicks the dark overlay (not the modal itself)
+  if (e.target === document.getElementById('quizOverlay')) closeQuiz();
+};
+
+window.openQuizFlow = function(subject, topics) {
+  _quizState = { subject, topics: Array.isArray(topics) ? topics : [], questions: null, currentQ: 0, answers: [] };
+  _renderQuizPromptEditor();
+};
+
+function _renderQuizPromptEditor() {
+  const { subject, topics } = _quizState;
+  const defaultPrompt =
+`Generate 20 multiple-choice questions for Arjun, Grade 7, Shiv Nadar School.
+Subject: ${subject}
+Topics covered in class: ${topics.slice(0, 6).join('; ')}${topics.length > 6 ? '…' : ''}
+
+Make questions based on the CBSE/NCERT Grade 7 curriculum for these specific topics.
+Vary difficulty: ~6 easy, ~9 medium, ~5 challenging.
+Return ONLY a JSON array (no markdown, no explanation).`;
+
+  _quizEl().innerHTML = `
+    <div class="qz-header">
+      <h2>🎯 Generate Quiz · ${escHtml(subject)}</h2>
+      <button class="qz-close" onclick="closeQuiz()">✕</button>
+    </div>
+    <div class="qz-body">
+      <p class="qz-label">Topics from your class notes:</p>
+      <div class="qz-topic-chips">
+        ${topics.map(t => `<span class="qz-chip">${escHtml(t)}</span>`).join('') || '<span class="muted">No topics logged yet — quiz will use Grade 7 curriculum</span>'}
+      </div>
+      <p class="qz-label" style="margin-top:1.5rem">Prompt for Gemini (edit as needed):</p>
+      <textarea class="qz-prompt-textarea" id="quizPromptTA" rows="7">${escHtml(defaultPrompt)}</textarea>
+      <button class="qz-primary-btn" onclick="doGenerateQuiz()">
+        ✨ Generate 20 Questions
+      </button>
+    </div>`;
+  document.getElementById('quizOverlay').style.display = 'flex';
+}
+
+window.doGenerateQuiz = async function() {
+  const prompt   = document.getElementById('quizPromptTA').value;
+  const { subject, topics } = _quizState;
+
+  _quizEl().innerHTML = `
+    <div class="qz-loading">
+      <div class="qz-spinner"></div>
+      <p>Gemini is generating 20 questions…</p>
+      <p class="muted" style="font-size:0.85rem">This takes about 5-10 seconds</p>
+    </div>`;
+
+  try {
+    const res = await fetch('/api/quiz/generate', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ subject, topics, customPrompt: prompt }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    _quizState.questions = data.questions;
+    _quizState.currentQ  = 0;
+    _quizState.answers   = [];
+    _renderQuizQuestion();
+  } catch (err) {
+    _quizEl().innerHTML = `
+      <div class="qz-header">
+        <h2>❌ Quiz Generation Failed</h2>
+        <button class="qz-close" onclick="closeQuiz()">✕</button>
+      </div>
+      <div class="qz-body">
+        <p style="color:var(--red)">${escHtml(err.message)}</p>
+        <p class="muted">Make sure GEMINI_API_KEY is set in .env and the server is running.</p>
+        <button class="qz-primary-btn" onclick="openQuizFlow('${escHtml(subject)}', ${JSON.stringify(topics)})">
+          Try Again
+        </button>
+      </div>`;
+  }
+};
+
+function _renderQuizQuestion() {
+  const { questions, currentQ, subject } = _quizState;
+  const total    = questions.length;
+  const q        = questions[currentQ];
+  const progress = Math.round((currentQ / total) * 100);
+
+  _quizEl().innerHTML = `
+    <div class="qz-header">
+      <h2>🎯 ${escHtml(subject)} · Q${currentQ + 1} of ${total}</h2>
+      <button class="qz-close" onclick="closeQuiz()">✕</button>
+    </div>
+    <div class="qz-progress-bar"><div class="qz-progress-fill" style="width:${progress}%"></div></div>
+    <div class="qz-body">
+      <p class="qz-question-text">${escHtml(q.q)}</p>
+      <div class="qz-options" id="qzOptions">
+        ${q.options.map((opt, i) => `
+          <button class="qz-option-btn" data-letter="${opt[0]}"
+            onclick="selectQuizOption(this, '${opt[0]}', '${escHtml(q.answer)}')">
+            ${escHtml(opt)}
+          </button>`).join('')}
+      </div>
+      <div id="qzFeedback" class="qz-feedback" style="display:none"></div>
+      <div id="qzNext" style="display:none;margin-top:1rem;text-align:center">
+        <button class="qz-primary-btn" onclick="nextQuizQuestion()">
+          ${currentQ + 1 < total ? 'Next →' : '🏆 See Results'}
+        </button>
+      </div>
+    </div>`;
+}
+
+window.selectQuizOption = function(btn, selected, correct) {
+  const container = document.getElementById('qzOptions');
+  const allBtns   = container.querySelectorAll('.qz-option-btn');
+  const isCorrect = selected === correct;
+
+  allBtns.forEach(b => {
+    b.disabled = true;
+    if (b.dataset.letter === correct)       b.classList.add('qz-opt-correct');
+    else if (b === btn && !isCorrect)       b.classList.add('qz-opt-wrong');
+  });
+
+  _quizState.answers.push({ correct: isCorrect });
+
+  const fb = document.getElementById('qzFeedback');
+  fb.innerHTML = isCorrect
+    ? '<span class="qz-fb-correct">✅ Correct!</span>'
+    : `<span class="qz-fb-wrong">❌ Wrong. Correct answer: <strong>${escHtml(correct)}</strong></span>`;
+  fb.style.display = 'block';
+  document.getElementById('qzNext').style.display = 'block';
+};
+
+window.nextQuizQuestion = function() {
+  _quizState.currentQ++;
+  if (_quizState.currentQ >= _quizState.questions.length) _showQuizResults();
+  else _renderQuizQuestion();
+};
+
+async function _showQuizResults() {
+  const { subject, topics, answers, questions } = _quizState;
+  const score = answers.filter(a => a.correct).length;
+  const total = questions.length;
+  const pct   = Math.round((score / total) * 100);
+  const emoji = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚';
+  const msg   = pct >= 80 ? 'Excellent, Arjun! 🌟' : pct >= 60 ? 'Good effort! Keep it up 💪' : 'Keep practising — you\'ll get there! 📖';
+
+  // Show results immediately
+  _quizEl().innerHTML = `
+    <div class="qz-header">
+      <h2>${emoji} Quiz Complete!</h2>
+      <button class="qz-close" onclick="closeQuiz()">✕</button>
+    </div>
+    <div class="qz-body qz-results">
+      <div class="qz-score-display">
+        <span class="qz-score-big">${score}<span class="qz-score-of">/${total}</span></span>
+        <span class="qz-score-pct">${pct}%</span>
+      </div>
+      <p class="qz-result-msg">${msg}</p>
+      <div class="qz-breakdown">
+        ${answers.map((a, i) => `
+          <span class="qz-breakdown-dot ${a.correct ? 'correct' : 'wrong'}" title="Q${i+1}: ${a.correct ? 'Correct' : 'Wrong'}">
+            ${a.correct ? '✓' : '✗'}
+          </span>`).join('')}
+      </div>
+      <div class="qz-results-actions">
+        <button class="qz-primary-btn" onclick="openQuizFlow('${escHtml(subject)}', ${JSON.stringify(topics)})">
+          🔄 Try Again
+        </button>
+        <button class="qz-secondary-btn" onclick="closeQuiz()">Done</button>
+      </div>
+    </div>`;
+
+  // Save to DB async
+  try {
+    await fetch('/api/quiz/score', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ subject, score, total, topics: topics.slice(0, 8) }),
+    });
+    // Refresh topic log quiz scores
+    renderTopicLog();
+  } catch (e) { console.warn('Could not save quiz score:', e.message); }
+}
+
+window.closeQuiz = function() {
+  document.getElementById('quizOverlay').style.display = 'none';
+  _quizState = null;
+};
+
 // ── Init ───────────────────────────────────────────────────
-// Synchronous renders first
 renderHeader();
 renderTodaySubjects();
 renderTodaySummary();
 renderTodayEmails();
-renderHomework();
 renderVeracrossChecklist();
 renderHistory();
 renderTopicLog();
 renderVeracrossTab();
 renderTimetable();
 renderMyra();
+renderExamSchedule();
+renderHolidays();
+renderFooter();
 
 document.getElementById('historyMonthPicker').addEventListener('change', function() {
   renderHistory(this.value || undefined);
 });
 
-// Render todos immediately with empty state (so table shows even if GitHub load fails)
+// Render todos immediately with empty state (no flicker if API call fails)
 renderTodosPanel();
 renderMyraTodosPanel();
 
-// Then load shared state from GitHub and re-render with tick marks
+// Then load persisted state from server and re-render with correct tick marks
 loadTodoState().then(() => {
   renderTodosPanel();
   renderMyraTodosPanel();
   renderVeracrossChecklist();
   renderVeracrossTab();
 }).catch(() => {
-  // GitHub unavailable — items rendered above, ticks just won't persist
+  // Server not running → ticks won't persist, but all items still show
+  console.warn('Dashboard running without persistence (server not available)');
 });

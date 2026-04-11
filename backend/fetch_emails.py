@@ -258,6 +258,8 @@ Do NOT guess. Only assign arjun/myra if the content makes it clear.
 
 Step 2 — Fill the right JSON schema. Reply with ONLY valid JSON, no markdown fences.
 
+CRITICAL RULE: Never invent data. If something is not clearly stated in the email, leave the field empty.
+
 If kid="arjun":
 {{
   "kid": "arjun",
@@ -266,7 +268,10 @@ If kid="arjun":
   "schoolSubject": null,
   "todoItems": [],
   "homeworkItems": [],
-  "veracrossItems": []
+  "veracrossItems": [],
+  "topicsCovered": [],
+  "examSchedule": [],
+  "holidays": []
 }}
   tags: any of ["announcement","hw","test","chapter","veracross"]
   schoolSubject: one of the core subjects, or null
@@ -277,6 +282,18 @@ If kid="arjun":
     Leave "id" as empty string "".
   homeworkItems: [{{"subject":"Math","description":"...","dueDate":"YYYY-MM-DD"}}] or []
   veracrossItems: [{{"action":"...","detail":"...","done":false}}] only for Veracross portal actions
+  topicsCovered: Extract ONLY if this is clearly a teacher/subject email (not admin/event/circular).
+    Format: [{{"subject":"Math","topic":"Algebraic Expressions — Variables and Constants"}}]
+    Keep topic names specific and descriptive (chapter name + concept). Max 4 topics per email.
+    Leave empty [] for non-academic emails (admin, fees, events, transport, Veracross).
+  examSchedule: Extract ONLY if the email announces upcoming test/exam dates with actual dates.
+    Format: [{{"examType":"UT1","subject":"Math","examDate":"YYYY-MM-DD","topics":"Linear equations, Quadratic expressions"}}]
+    examType must be one of: "UT1", "UT2", "MidTerm", "FinalTerm", "ClassTest", "Other"
+    Leave empty [] if no exam dates are mentioned.
+  holidays: Extract ONLY if the email announces school closure or holidays on specific dates.
+    Format: [{{"date":"YYYY-MM-DD","name":"Diwali Break","type":"holiday"}}]
+    type: "holiday" for school-declared off days, "event" for school events on those dates.
+    Leave empty [] if no holiday/closure dates mentioned.
 
 If kid="myra":
 {{
@@ -298,7 +315,7 @@ If kid="skip":
 
     resp = _get_client().messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=600,
+        max_tokens=800,
         messages=[{"role": "user", "content": prompt}],
     )
     result = _parse_json(resp.content[0].text)
@@ -311,16 +328,19 @@ If kid="skip":
     if kid == "arjun":
         todos = _stamp_todo_ids(result.get("todoItems", []), date_str, "arjun")
         return {
-            "kid":             "arjun",
-            "subject":         raw["subject"],
-            "from":            raw["from"],
-            "summary":         result.get("summary", ""),
-            "tags":            result.get("tags", []),
-            "schoolSubject":   result.get("schoolSubject"),
-            "attachments":     [{"name": a["name"], "type": a["type"]} for a in raw.get("attachments", [])],
-            "todoItems":       todos,
-            "_homeworkItems":  result.get("homeworkItems", []),
-            "_veracrossItems": result.get("veracrossItems", []),
+            "kid":              "arjun",
+            "subject":          raw["subject"],
+            "from":             raw["from"],
+            "summary":          result.get("summary", ""),
+            "tags":             result.get("tags", []),
+            "schoolSubject":    result.get("schoolSubject"),
+            "attachments":      [{"name": a["name"], "type": a["type"]} for a in raw.get("attachments", [])],
+            "todoItems":        todos,
+            "_homeworkItems":   result.get("homeworkItems", []),
+            "_veracrossItems":  result.get("veracrossItems", []),
+            "_topicsCovered":   result.get("topicsCovered", []),
+            "_examSchedule":    result.get("examSchedule", []),
+            "_holidays":        result.get("holidays", []),
         }
 
     if kid == "myra":
@@ -391,7 +411,7 @@ def process_day(target_date: date, data: dict, timetable: dict, mail: imaplib.IM
     raw_emails = fetch_all_emails_for_date(mail, target_date)
 
     arjun_processed, myra_processed = [], []
-    all_hw, all_vc = [], []
+    all_hw, all_vc, all_topics, all_exams, all_holidays = [], [], [], [], []
 
     for raw in raw_emails:
         print(f"   🔍 {raw['subject'][:70]}")
@@ -402,6 +422,15 @@ def process_day(target_date: date, data: dict, timetable: dict, mail: imaplib.IM
         if result["kid"] == "arjun":
             all_hw.extend(result.pop("_homeworkItems", []))
             all_vc.extend(result.pop("_veracrossItems", []))
+            # New: topics, exams, holidays
+            for t in result.pop("_topicsCovered", []):
+                t["date"]   = date_str
+                t["source"] = result.get("subject", "")
+                all_topics.append(t)
+            for e in result.pop("_examSchedule", []):
+                all_exams.append(e)
+            for h in result.pop("_holidays", []):
+                all_holidays.append(h)
             result.pop("kid")
             arjun_processed.append(result)
             print(f"       → Arjun ({'·'.join(result.get('tags', [])) or 'general'})")
@@ -418,7 +447,7 @@ def process_day(target_date: date, data: dict, timetable: dict, mail: imaplib.IM
         "summary":        arjun_summary,
         "emails":         arjun_processed,
         "veracrossItems": all_vc,
-        "topicsCovered":  [],
+        "topicsCovered":  [t["topic"] for t in all_topics],
         "homeworkItems":  all_hw,
     }
     idx = next((i for i, d in enumerate(data["days"]) if d["date"] == date_str), None)
@@ -427,12 +456,43 @@ def process_day(target_date: date, data: dict, timetable: dict, mail: imaplib.IM
     else:
         data["days"].insert(0, arjun_day)
 
+    # Veracross log
     if all_vc:
         vc_idx = next((i for i, v in enumerate(data["veracrossLog"]) if v["date"] == date_str), None)
         if vc_idx is not None:
             data["veracrossLog"][vc_idx]["items"] = all_vc
         else:
             data["veracrossLog"].insert(0, {"date": date_str, "items": all_vc})
+
+    # Topic log — cumulative, deduplicate by subject+topic
+    topic_log = data.setdefault("topicLog", [])
+    for t in all_topics:
+        existing = next(
+            (x for x in topic_log if x["subject"] == t["subject"] and x["topic"] == t["topic"] and x["date"] == date_str),
+            None
+        )
+        if not existing:
+            topic_log.insert(0, t)
+            print(f"       📚 Topic: [{t['subject']}] {t['topic'][:60]}")
+
+    # Exam schedule — deduplicate by subject+date
+    exam_sched = data.setdefault("examSchedule", [])
+    for e in all_exams:
+        existing = next(
+            (x for x in exam_sched if x["subject"] == e["subject"] and x["examDate"] == e["examDate"]),
+            None
+        )
+        if not existing:
+            exam_sched.insert(0, e)
+            print(f"       📝 Exam: [{e.get('examType','')}] {e['subject']} on {e['examDate']}")
+
+    # Holidays — deduplicate by date
+    holiday_list = data.setdefault("holidays", [])
+    for h in all_holidays:
+        existing = next((x for x in holiday_list if x["date"] == h["date"]), None)
+        if not existing:
+            holiday_list.insert(0, h)
+            print(f"       🎉 Holiday: {h['name']} on {h['date']}")
 
     # ── Myra's day entry ────────────────────────────────────
     myra_summary = build_myra_day_summary(myra_processed, target_date)

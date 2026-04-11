@@ -4,3 +4,5 @@ __pycache__/
 .DS_Store
 data/config.js
 data/dashboard-config.js
+data/dashboard.db
+node_modules/

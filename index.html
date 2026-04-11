@@ -9,6 +9,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+
+  <!-- ═══════════ QUIZ OVERLAY (full-page modal) ═══════════ -->
+  <div id="quizOverlay" class="quiz-overlay" style="display:none" onclick="handleQuizOverlayClick(event)">
+    <div class="quiz-modal" id="quizModal">
+      <!-- Dynamic content injected by quiz flow -->
+    </div>
+  </div>
+
   <header>
     <div class="header-inner">
       <div class="header-title">
@@ -30,6 +38,8 @@
       <button class="tab active" data-tab="today">📅 Today</button>
       <button class="tab" data-tab="history">📖 History</button>
       <button class="tab" data-tab="topics">📚 Topic Log</button>
+      <button class="tab" data-tab="exams">📝 Exams</button>
+      <button class="tab" data-tab="holidays">🎉 Holidays</button>
       <button class="tab" data-tab="veracross">🏫 Veracross</button>
       <button class="tab" data-tab="timetable">🗓️ Timetable</button>
     </nav>
@@ -53,8 +63,17 @@
           <div class="card full-width" id="todoPanel">
             <div class="card-header">
               <h2>✅ Action Items</h2>
-              <span class="badge-info" id="todoPanelMeta"></span>
+              <div class="todo-header-controls">
+                <span class="badge-info" id="todoPanelMeta"></span>
+                <select class="date-filter-select" id="todoDateFilter" onchange="setTodoDateFilter(+this.value)">
+                  <option value="7">Last 7 days</option>
+                  <option value="30" selected>Last 30 days</option>
+                  <option value="90">Last 3 months</option>
+                  <option value="0">All time</option>
+                </select>
+              </div>
             </div>
+            <div id="urgentBanner"></div>
             <div id="todoList"><p class="muted">No action items.</p></div>
           </div>
 
@@ -64,7 +83,7 @@
               <span class="date-badge" id="todayDate"></span>
             </div>
             <div id="todaySummary" class="summary-body">
-              <p class="muted">No updates yet for today. Check back after 7 PM.</p>
+              <p class="muted">No updates yet for today. The dashboard updates at 7 PM each evening.</p>
             </div>
           </div>
 
@@ -77,16 +96,6 @@
             <div class="card-header"><h2>📧 School Emails</h2></div>
             <div id="todayEmails">
               <p class="muted">No emails processed yet.</p>
-            </div>
-          </div>
-
-          <div class="card full-width">
-            <div class="card-header">
-              <h2>📖 Homework Tracker</h2>
-              <span class="badge-info">Reply HW 1 DONE / HW ALL DONE on WhatsApp</span>
-            </div>
-            <div id="homeworkList">
-              <p class="muted">No homework assigned yet today.</p>
             </div>
           </div>
 
@@ -119,12 +128,30 @@
       <section id="tab-topics" class="tab-content">
         <div class="card">
           <div class="card-header">
-            <h2>📚 Topic Log by Subject</h2>
-            <span class="badge-info">Auto-updated from teacher emails</span>
+            <h2>📚 Topic Log</h2>
+            <span class="badge-info">Cumulative · from teacher emails only</span>
           </div>
           <div id="topicLog">
-            <p class="muted">Topics will be logged here as teacher emails come in.</p>
+            <div class="waiting-school-state">
+              <span class="waiting-icon">📬</span>
+              <p>Waiting for update from school</p>
+              <p class="muted">Topics will appear here as teacher emails are processed</p>
+            </div>
           </div>
+        </div>
+      </section>
+
+      <!-- EXAM SCHEDULE TAB -->
+      <section id="tab-exams" class="tab-content">
+        <div id="examScheduleContainer">
+          <!-- Rendered by renderExamSchedule() -->
+        </div>
+      </section>
+
+      <!-- HOLIDAY CALENDAR TAB -->
+      <section id="tab-holidays" class="tab-content">
+        <div id="holidayContainer">
+          <!-- Rendered by renderHolidays() -->
         </div>
       </section>
 
@@ -216,7 +243,6 @@
   </footer>
 
   <script src="data/dashboard-data.js"></script>
-  <script src="data/dashboard-config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
