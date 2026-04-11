@@ -169,26 +169,54 @@ function renderHomework() {
   el.innerHTML = html;
 }
 
+function vcItemId(date, action) {
+  // Stable ID for a veracross item — same system as todoItems
+  let h = 0;
+  for (const c of `vc-${date}-${action}`) h = Math.imul(31, h) + c.charCodeAt(0) | 0;
+  return 'vc-' + Math.abs(h).toString(16).padStart(8, '0');
+}
+
+function renderVcItem(item, date) {
+  const id   = vcItemId(date, item.action);
+  const done = isTodoDone(id);
+  const doneAt = _todoState[id]?.doneAt
+    ? new Date(_todoState[id].doneAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })
+    : '';
+  return `
+    <div class="vc-item ${done ? 'hw-item-done' : ''}">
+      <input type="checkbox" class="vc-checkbox" id="${id}"
+        ${done ? 'checked' : ''}
+        onchange="toggleVcItem('${id}', this)">
+      <label class="vc-label" for="${id}">
+        <strong>${escHtml(item.action)}</strong>
+        <span>${escHtml(item.detail)}</span>
+        ${done && doneAt ? `<span class="hw-done-time">✅ Done at ${doneAt}</span>` : ''}
+      </label>
+    </div>`;
+}
+
+window.toggleVcItem = async function(id, checkbox) {
+  const done = checkbox.checked;
+  _todoState[id] = done
+    ? { done: true,  doneAt: new Date().toISOString() }
+    : { done: false, doneAt: null };
+  await saveTodoState();
+  renderVeracrossChecklist();
+  renderVeracrossTab();
+  renderTodosPanel(); // VC section in action items updates too
+};
+
 function renderVeracrossChecklist() {
   const today = todayISO();
   const entry = DATA.days.find(d => d.date === today);
-  const el = document.getElementById('veracrossChecklist');
+  const el    = document.getElementById('veracrossChecklist');
   const items = entry?.veracrossItems || [];
 
   if (!items.length) {
     el.innerHTML = '<p class="muted">No Veracross action items for today.</p>';
     return;
   }
-
-  el.innerHTML = items.map((item, i) => `
-    <div class="vc-item">
-      <input type="checkbox" class="vc-checkbox" id="vc-${i}" ${item.done ? 'checked' : ''}>
-      <label class="vc-label" for="vc-${i}">
-        <strong>${escHtml(item.action)}</strong>
-        <span>${escHtml(item.detail)}</span>
-      </label>
-    </div>
-  `).join('');
+  el.innerHTML = items.map(item => renderVcItem(item, today)).join('');
 }
 
 // ── History Tab ────────────────────────────────────────────
@@ -319,25 +347,23 @@ function renderVeracrossTab() {
     return;
   }
 
-  el.innerHTML = DATA.veracrossLog.map(entry => `
-    <div class="history-day">
-      <div class="history-day-header">
-        <span class="history-day-date">${formatDate(entry.date)}</span>
-        <span class="history-day-meta">${(entry.items||[]).length} item(s)</span>
-      </div>
-      <div class="history-day-body open">
-        ${(entry.items||[]).map((item, i) => `
-          <div class="vc-item">
-            <input type="checkbox" class="vc-checkbox" ${item.done ? 'checked' : ''}>
-            <label class="vc-label">
-              <strong>${escHtml(item.action)}</strong>
-              <span>${escHtml(item.detail)}</span>
-            </label>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `).join('');
+  el.innerHTML = DATA.veracrossLog.map(entry => {
+    const items   = entry.items || [];
+    const doneCount = items.filter(item => isTodoDone(vcItemId(entry.date, item.action))).length;
+    return `
+      <div class="history-day">
+        <div class="history-day-header">
+          <span class="history-day-date">${formatDate(entry.date)}</span>
+          <span class="history-day-meta">
+            ${items.length} item(s)
+            ${doneCount ? `· <span style="color:var(--green)">✅ ${doneCount} done</span>` : ''}
+          </span>
+        </div>
+        <div class="history-day-body open">
+          ${items.map(item => renderVcItem(item, entry.date)).join('')}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 // ── Footer ─────────────────────────────────────────────────
@@ -788,6 +814,8 @@ renderMyraTodosPanel();
 loadTodoState().then(() => {
   renderTodosPanel();
   renderMyraTodosPanel();
+  renderVeracrossChecklist();
+  renderVeracrossTab();
 }).catch(() => {
-  // GitHub unavailable — table already rendered above, ticks just won't persist
+  // GitHub unavailable — items rendered above, ticks just won't persist
 });
