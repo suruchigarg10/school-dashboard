@@ -487,6 +487,32 @@ footer {
   overflow-x: auto;
 }
 
+.timetable-grid-with-times {
+  grid-template-columns: 110px repeat(5, 1fr);
+}
+
+.tt-time-col {
+  border-right: 2px solid var(--gray-200);
+}
+
+.tt-time-label {
+  font-size: 0.72rem !important;
+  color: var(--gray-400) !important;
+  font-weight: 500 !important;
+  background: var(--gray-50) !important;
+  text-align: right !important;
+  padding-right: 0.75rem !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.tt-fixed {
+  background: var(--gray-100) !important;
+  color: var(--gray-400) !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  font-style: italic;
+}
+
 .tt-day-col {
   border-right: 1px solid var(--gray-200);
 }

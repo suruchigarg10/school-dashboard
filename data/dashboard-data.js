@@ -11,51 +11,24 @@ window.DASHBOARD_DATA = {
     "school": "Shiv Nadar",
     "grade": 7
   },
+  "timetableSlots": [
+    {"time": "7:55–8:30",   "label": "CT / Breakfast", "fixed": true},
+    {"time": "8:30–9:20",   "label": "Slot 1"},
+    {"time": "9:20–10:10",  "label": "Slot 2"},
+    {"time": "10:10–11:00", "label": "Slot 3"},
+    {"time": "11:00–11:50", "label": "Slot 4"},
+    {"time": "11:50–12:40", "label": "Slot 5"},
+    {"time": "12:40–13:10", "label": "Lunch", "fixed": true},
+    {"time": "13:10–14:00", "label": "Slot 6"},
+    {"time": "14:00–14:50", "label": "Slot 7"},
+    {"time": "14:50–15:00", "label": "Dispersal", "fixed": true}
+  ],
   "timetable": {
-    "Monday": [
-      "Social Science",
-      "Physics",
-      "AHA Sports",
-      "Chemistry",
-      "Math",
-      "IT"
-    ],
-    "Tuesday": [
-      "Chemistry",
-      "Social Science",
-      "Hindi",
-      "Math",
-      "AHA Arts",
-      "Spanish",
-      "English"
-    ],
-    "Wednesday": [
-      "Test Period",
-      "Math",
-      "Library",
-      "Assembly",
-      "English",
-      "IT",
-      "Hindi"
-    ],
-    "Thursday": [
-      "Spanish",
-      "Social Science",
-      "Math",
-      "STEAM",
-      "Biology",
-      "English",
-      "Hindi"
-    ],
-    "Friday": [
-      "AHA Arts",
-      "English",
-      "Social Science",
-      "Physics",
-      "PE",
-      "Biology",
-      "Clubs"
-    ]
+    "Monday":    ["Circle Time",  "Social Science", "Physics",        "AHA Sports", "Chemistry", "Math",    "IT"],
+    "Tuesday":   ["Chemistry",    "Social Science", "Hindi",          "Math",       "AHA Arts",  "Spanish", "English"],
+    "Wednesday": ["Test Period",  "Math",           "Library",        "Assembly",   "English",   "IT",      "Hindi"],
+    "Thursday":  ["Spanish",      "Social Science", "Math",           "STEAM",      "Biology",   "English", "Hindi"],
+    "Friday":    ["AHA Arts",     "English",        "Social Science", "Physics",    "PE",        "Biology", "Clubs"]
   },
   "coreSubjects": [
     "Math",

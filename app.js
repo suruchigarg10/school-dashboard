@@ -356,30 +356,47 @@ function escHtml(str) {
 function renderTimetable() {
   const el = document.getElementById('timetableGrid');
   const today = todayDayName();
-  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  const days  = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  const slots = DATA.timetableSlots || [];
 
-  // Find max periods across all days
-  const maxPeriods = Math.max(...days.map(d => (DATA.timetable[d] || []).length));
+  // Build full per-day arrays: fixed slots filled in, teaching slots from timetable
+  function buildFullDay(day) {
+    const teaching = [...(DATA.timetable[day] || [])];
+    return slots.map(slot => {
+      if (slot.fixed) return { subject: slot.label, fixed: true };
+      return { subject: teaching.shift() || '', fixed: false };
+    });
+  }
 
-  let html = '<div class="timetable-grid">';
+  // Time label column + day columns
+  let html = '<div class="timetable-grid timetable-grid-with-times">';
 
+  // Time label column
+  html += '<div class="tt-time-col">';
+  html += '<div class="tt-day-header">Time</div>';
+  slots.forEach(slot => {
+    html += `<div class="tt-period tt-time-label">${slot.time}</div>`;
+  });
+  html += '</div>';
+
+  // Day columns
   days.forEach(day => {
     const isToday = day === today;
     html += `<div class="tt-day-col">`;
     html += `<div class="tt-day-header ${isToday ? 'today-col' : ''}">${day}${isToday ? '<span class="tt-today-badge">Today</span>' : ''}</div>`;
 
-    const periods = DATA.timetable[day] || [];
-    for (let i = 0; i < maxPeriods; i++) {
-      const subject = periods[i] || '';
-      if (!subject) {
+    buildFullDay(day).forEach(({ subject, fixed }) => {
+      if (fixed) {
+        html += `<div class="tt-period tt-fixed">${subject}</div>`;
+      } else if (!subject) {
         html += `<div class="tt-period"></div>`;
       } else {
         const isCore = DATA.coreSubjects.includes(subject);
         html += `<div class="tt-period ${isCore ? 'core' : 'activity'}">${subject}</div>`;
       }
-    }
+    });
 
-    html += `</div>`;
+    html += '</div>';
   });
 
   html += '</div>';
