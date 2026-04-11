@@ -570,52 +570,138 @@ function collectAllTodos(kid) {
   return items;
 }
 
+function formatDueDate(d) {
+  if (!d) return '—';
+  try {
+    return new Date(d).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+  } catch { return d; }
+}
+
+function isDueSoon(d) {
+  if (!d) return false;
+  const diff = new Date(d) - new Date();
+  return diff >= 0 && diff < 3 * 86400000; // within 3 days
+}
+
+function isOverdue(d) {
+  if (!d) return false;
+  return new Date(d) < new Date() && !isTodoDone;
+}
+
 function renderTodoItems(containerId, metaId, todos) {
   const el   = document.getElementById(containerId);
   const meta = document.getElementById(metaId);
+
   if (!todos.length) {
-    el.innerHTML = '<p class="muted">No action items.</p>';
-    if (meta) meta.textContent = "";
+    el.innerHTML = '<p class="muted">No action items yet.</p>';
+    if (meta) meta.textContent = '';
     return;
   }
 
   const open   = todos.filter(t => !isTodoDone(t.id));
   const closed = todos.filter(t =>  isTodoDone(t.id));
 
+  // Sort open: overdue first, then by due date asc, then no date last
+  open.sort((a, b) => {
+    if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+    if (a.dueDate) return -1;
+    if (b.dueDate) return  1;
+    return 0;
+  });
+
   if (meta) meta.textContent = `${open.length} open · ${closed.length} done`;
 
-  const renderItem = (t) => {
-    const done = isTodoDone(t.id);
-    const doneAt = _todoState[t.id]?.doneAt
-      ? " · done " + new Date(_todoState[t.id].doneAt).toLocaleDateString("en-IN", { day:"numeric", month:"short" })
-      : "";
+  const renderRow = (t, isDone) => {
+    const state     = _todoState[t.id];
+    const doneAt    = state?.doneAt
+      ? new Date(state.doneAt).toLocaleDateString('en-IN', { day:'numeric', month:'short' })
+      : '';
+    const overdue   = !isDone && t.dueDate && new Date(t.dueDate) < new Date();
+    const soon      = !isDone && isDueSoon(t.dueDate);
+    const dueCls    = overdue ? 'todo-overdue' : soon ? 'todo-soon' : '';
+    const owner     = t.owner || '—';
+    const ownerCls  = owner === 'Arjun' ? 'owner-arjun' : owner === 'Parent' ? 'owner-parent' : '';
+
     return `
-      <div class="todo-item ${done ? "todo-done" : ""}">
-        <input type="checkbox" class="vc-checkbox" id="td-${t.id}"
-          ${done ? "checked" : ""}
-          onchange="toggleTodo('${t.id}', this)">
-        <label class="vc-label" for="td-${t.id}">
-          <strong>${escHtml(t.text)}</strong>
-          <span class="todo-meta">
-            ${t.dueDate ? `📅 Due ${escHtml(t.dueDate)}` : ""}
-            ${t.source  ? `· ${escHtml(t.source)}` : ""}
-            ${done ? `<span class="hw-done-time">✅${doneAt}</span>` : ""}
-          </span>
-        </label>
-      </div>`;
+      <tr class="${isDone ? 'todo-row-done' : 'todo-row-open'}">
+        <td class="todo-radio-cell">
+          <label class="todo-radio-label" title="${isDone ? 'Mark as open' : 'Mark as done'}">
+            <input type="radio" class="todo-radio" name="td-${t.id}"
+              ${isDone ? 'checked' : ''}
+              onchange="toggleTodo('${t.id}', this)">
+            <span class="todo-radio-custom ${isDone ? 'is-done' : ''}"></span>
+          </label>
+        </td>
+        <td class="todo-text-cell ${isDone ? 'todo-text-done' : ''}">
+          ${escHtml(t.text)}
+          ${isDone && doneAt ? `<span class="todo-done-at">✅ Done ${doneAt}</span>` : ''}
+        </td>
+        <td><span class="owner-badge ${ownerCls}">${escHtml(owner)}</span></td>
+        <td class="todo-due-cell ${dueCls}">
+          ${t.dueDate ? formatDueDate(t.dueDate) : '—'}
+          ${overdue ? '<span class="todo-overdue-badge">Overdue</span>' : ''}
+          ${soon && !overdue ? '<span class="todo-soon-badge">Soon</span>' : ''}
+        </td>
+        <td class="todo-source-cell">
+          <a href="#" class="todo-source-link"
+            onclick="jumpToHistory('${escHtml(t.source || '')}'); return false;">
+            ${escHtml(t.source || '—')}
+          </a>
+        </td>
+      </tr>`;
   };
 
-  let html = open.map(renderItem).join("");
+  const tableHead = `
+    <table class="todo-table">
+      <thead>
+        <tr>
+          <th class="todo-radio-cell"></th>
+          <th>To Do</th>
+          <th>Owner</th>
+          <th>Due Date</th>
+          <th>Reference</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  let html = tableHead;
+  html += open.map(t => renderRow(t, false)).join('');
+
   if (closed.length) {
-    html += `<div class="todo-done-section">
-      <div class="todo-done-header" onclick="this.nextElementSibling.classList.toggle('open')">
-        ✅ ${closed.length} completed <span style="font-size:0.7rem;color:var(--gray-400)">▼</span>
-      </div>
-      <div class="todo-done-list">${closed.map(renderItem).join("")}</div>
-    </div>`;
+    html += `<tr class="todo-divider-row">
+      <td colspan="5">
+        <span class="todo-divider-label" onclick="toggleDoneRows(this)">
+          ✅ ${closed.length} completed — <span class="toggle-label">show</span>
+        </span>
+      </td>
+    </tr>`;
+    html += `<tbody class="todo-done-rows" style="display:none">`;
+    html += closed.map(t => renderRow(t, true)).join('');
+    html += `</tbody>`;
   }
+
+  html += `</tbody></table>`;
   el.innerHTML = html;
 }
+
+window.toggleDoneRows = function(el) {
+  const tbody = el.closest('table').querySelector('.todo-done-rows');
+  const label = el.querySelector('.toggle-label');
+  const hidden = tbody.style.display === 'none';
+  tbody.style.display = hidden ? '' : 'none';
+  label.textContent   = hidden ? 'hide' : 'show';
+};
+
+window.jumpToHistory = function(source) {
+  // Switch to history tab and highlight matching source
+  document.querySelectorAll('#arjun-tabs .tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#arjun-content .tab-content').forEach(s => s.classList.remove('active'));
+  const histTab = document.querySelector('#arjun-tabs .tab[data-tab="history"]');
+  if (histTab) histTab.classList.add('active');
+  document.getElementById('tab-history').classList.add('active');
+  // Expand all sections so the email is visible
+  document.querySelectorAll('.hist-section-body').forEach(b => b.classList.add('open'));
+};
 
 function renderTodosPanel() {
   const todos = collectAllTodos("arjun");

@@ -252,9 +252,10 @@ If kid="arjun":
 }}
   tags: any of ["announcement","hw","test","chapter","veracross"]
   schoolSubject: one of the core subjects, or null
-  todoItems: EVERY action item for parents/Arjun from email + attachments.
-    Format: [{{"id":"","text":"Fill Club Section form","dueDate":"YYYY-MM-DD","source":"Club circular"}}]
+  todoItems: EVERY action item from email + attachments.
+    Format: [{{"id":"","text":"Fill Club Section form","owner":"Arjun","dueDate":"YYYY-MM-DD","source":"Club circular"}}]
     Include: forms to submit, things to bring, payments, Veracross downloads, homework, test prep.
+    owner: "Arjun" if Arjun must do it himself (homework, bring something, study), "Parent" if parent must act (pay fee, fill form, register online, download from portal).
     Leave "id" as empty string "".
   homeworkItems: [{{"subject":"Math","description":"...","dueDate":"YYYY-MM-DD"}}] or []
   veracrossItems: [{{"action":"...","detail":"...","done":false}}] only for Veracross portal actions
@@ -269,7 +270,8 @@ If kid="myra":
 }}
   tags: any of ["announcement","hw","event","transport","fee"]
   todoItems: EVERY action item for parents from email + attachments.
-    Format: [{{"id":"","text":"Pay Q1 fee before April 15","dueDate":"YYYY-MM-DD","source":"Fee invoice"}}]
+    Format: [{{"id":"","text":"Pay Q1 fee before April 15","owner":"Parent","dueDate":"YYYY-MM-DD","source":"Fee invoice"}}]
+    owner: always "Parent" for Myra since she is in KG.
     Leave "id" as empty string "".
   category: one of ["general","homework","event","transport","fee","announcement"]
 

@@ -579,42 +579,127 @@ input[type="month"] {
   color: var(--gray-600);
 }
 
-/* TODO PANEL */
-.todo-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.85rem 1.5rem;
-  border-bottom: 1px solid var(--gray-100);
+/* TODO TABLE */
+.todo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.855rem;
 }
-.todo-item:last-child { border-bottom: none; }
 
-.todo-item .vc-label strong { font-weight: 600; display: block; }
-
-.todo-meta {
-  display: block;
-  font-size: 0.775rem;
+.todo-table thead th {
+  padding: 0.65rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--gray-400);
+  border-bottom: 2px solid var(--gray-200);
+  text-align: left;
+  background: var(--gray-50);
+}
+
+.todo-table tbody tr {
+  border-bottom: 1px solid var(--gray-100);
+  transition: background 0.1s;
+}
+.todo-table tbody tr:hover { background: var(--gray-50); }
+.todo-table tbody tr:last-child { border-bottom: none; }
+
+.todo-table td {
+  padding: 0.75rem 1rem;
+  vertical-align: top;
+}
+
+/* Radio button */
+.todo-radio-cell { width: 36px; padding-right: 0; }
+.todo-radio { display: none; }
+.todo-radio-label { cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.todo-radio-custom {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--gray-300);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.todo-radio-custom:hover { border-color: var(--primary); }
+.todo-radio-custom.is-done {
+  background: var(--green);
+  border-color: var(--green);
+}
+.todo-radio-custom.is-done::after {
+  content: '✓';
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+/* Text cell */
+.todo-text-cell { min-width: 280px; line-height: 1.5; color: var(--gray-800); }
+.todo-text-done { color: var(--gray-400); text-decoration: line-through; }
+.todo-done-at {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--green);
+  text-decoration: none;
   margin-top: 0.2rem;
 }
 
-.todo-done .vc-label strong,
-.todo-done .vc-label span { text-decoration: line-through; color: var(--gray-400); }
+/* Owner badge */
+.owner-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  white-space: nowrap;
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+.owner-arjun  { background: var(--primary-light); color: var(--primary); }
+.owner-parent { background: var(--accent-light);  color: var(--accent); }
 
-.todo-done-section { border-top: 1px solid var(--gray-100); }
+/* Due date */
+.todo-due-cell { white-space: nowrap; color: var(--gray-600); font-size: 0.82rem; }
+.todo-overdue  { color: var(--red) !important; font-weight: 600; }
+.todo-soon     { color: var(--accent) !important; font-weight: 600; }
+.todo-overdue-badge {
+  display: inline-block; margin-left: 0.4rem;
+  font-size: 0.65rem; font-weight: 700;
+  background: var(--red-light); color: var(--red);
+  padding: 0.1rem 0.4rem; border-radius: 99px;
+}
+.todo-soon-badge {
+  display: inline-block; margin-left: 0.4rem;
+  font-size: 0.65rem; font-weight: 700;
+  background: var(--accent-light); color: var(--accent);
+  padding: 0.1rem 0.4rem; border-radius: 99px;
+}
 
-.todo-done-header {
-  padding: 0.6rem 1.5rem;
+/* Source link */
+.todo-source-cell { max-width: 180px; font-size: 0.8rem; }
+.todo-source-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.todo-source-link:hover { text-decoration: underline; }
+
+/* Divider / done section */
+.todo-divider-row td {
+  padding: 0.5rem 1rem;
+  background: var(--gray-50);
+  border-top: 2px solid var(--gray-200);
+}
+.todo-divider-label {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--gray-400);
   cursor: pointer;
   user-select: none;
 }
-.todo-done-header:hover { background: var(--gray-50); }
-
-.todo-done-list { display: none; }
-.todo-done-list.open { display: block; }
+.todo-divider-label:hover { color: var(--gray-600); }
+.todo-row-done td { background: var(--gray-50); }
 
 /* RESPONSIVE */
 @media (max-width: 700px) {
