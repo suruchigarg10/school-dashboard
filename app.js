@@ -557,8 +557,7 @@ async function toggleTodo(id, checkbox) {
   _todoState[id] = done
     ? { done: true,  doneAt: new Date().toISOString() }
     : { done: false, doneAt: null };
-  await saveTodoState();
-  // Re-render both panels so counts update
+  saveTodoState(); // fire and forget — don't block re-render
   renderTodosPanel();
   renderMyraTodosPanel();
 }
@@ -626,30 +625,27 @@ function sortTodos(todos) {
 }
 
 function renderRow(t, isDone) {
-  const state    = _todoState[t.id];
-  const doneAt   = state?.doneAt
+  const state   = _todoState[t.id];
+  const doneAt  = state?.doneAt
     ? new Date(state.doneAt).toLocaleDateString('en-IN', { day:'numeric', month:'short' }) : '';
-  const overdue  = !isDone && t.dueDate && new Date(t.dueDate) < new Date();
-  const soon     = !isDone && isDueSoon(t.dueDate);
-  const dueCls   = overdue ? 'todo-overdue' : soon ? 'todo-soon' : '';
-  const owner    = t.owner || '—';
-  const ownerCls = owner === 'Arjun' ? 'owner-arjun' : owner === 'Parent' ? 'owner-parent' : '';
+  const overdue = !isDone && t.dueDate && new Date(t.dueDate) < new Date();
+  const soon    = !isDone && isDueSoon(t.dueDate);
+  const dueCls  = overdue ? 'todo-overdue' : soon ? 'todo-soon' : '';
 
   return `
     <tr class="${isDone ? 'todo-row-done' : 'todo-row-open'}">
-      <td class="todo-radio-cell">
-        <label class="todo-radio-label" title="${isDone ? 'Mark as open' : 'Mark as done'}">
-          <input type="radio" class="todo-radio" name="td-${t.id}"
-            ${isDone ? 'checked' : ''}
-            onchange="toggleTodo('${t.id}', this)">
-          <span class="todo-radio-custom ${isDone ? 'is-done' : ''}"></span>
+      <td class="todo-check-cell">
+        <input type="checkbox" class="todo-checkbox" id="td-${t.id}"
+          ${isDone ? 'checked' : ''}
+          onchange="toggleTodo('${t.id}', this)">
+        <label class="todo-check-custom" for="td-${t.id}">
+          <span class="todo-check-icon">${isDone ? '✓' : ''}</span>
         </label>
       </td>
       <td class="todo-text-cell ${isDone ? 'todo-text-done' : ''}">
         ${escHtml(t.text)}
         ${isDone && doneAt ? `<span class="todo-done-at">✅ Done ${doneAt}</span>` : ''}
       </td>
-      <td><span class="owner-badge ${ownerCls}">${escHtml(owner)}</span></td>
       <td class="todo-due-cell ${dueCls}">
         ${t.dueDate ? formatDueDate(t.dueDate) : '—'}
         ${overdue ? '<span class="todo-overdue-badge">Overdue</span>' : ''}
@@ -657,7 +653,7 @@ function renderRow(t, isDone) {
       </td>
       <td class="todo-source-cell">
         <a href="#" class="todo-source-link"
-          onclick="jumpToHistory('${escHtml(t.source || '')}'); return false;">
+          onclick="jumpToHistory(); return false;">
           ${escHtml(t.source || '—')}
         </a>
       </td>
@@ -669,16 +665,16 @@ function buildTable(todos, tableId) {
   const { open, closed } = sortTodos(todos);
   let html = `<table class="todo-table" id="${tableId}">
     <thead><tr>
-      <th class="todo-radio-cell"></th>
-      <th>To Do</th><th>Owner</th><th>Due Date</th><th>Reference</th>
+      <th class="todo-check-cell">Done</th>
+      <th>To Do</th><th>Due Date</th><th>Reference</th>
     </tr></thead><tbody>`;
   html += open.map(t => renderRow(t, false)).join('');
   if (closed.length) {
-    html += `<tr class="todo-divider-row"><td colspan="5">
+    html += `<tr class="todo-divider-row"><td colspan="4">
       <span class="todo-divider-label" onclick="toggleDoneRows(this)">
         ✅ ${closed.length} completed — <span class="toggle-label">show</span>
       </span></td></tr>`;
-    html += `<tr class="todo-done-expander" style="display:none"><td colspan="5" style="padding:0">
+    html += `<tr class="todo-done-expander" style="display:none"><td colspan="4" style="padding:0">
       <table class="todo-table" style="width:100%"><tbody>
         ${closed.map(t => renderRow(t, true)).join('')}
       </tbody></table></td></tr>`;

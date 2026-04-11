@@ -668,28 +668,42 @@ input[type="month"] {
   vertical-align: top;
 }
 
-/* Radio button */
-.todo-radio-cell { width: 36px; padding-right: 0; }
-.todo-radio { display: none; }
-.todo-radio-label { cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.todo-radio-custom {
-  width: 18px; height: 18px;
+/* Checkbox cell */
+.todo-check-cell {
+  width: 52px;
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+  vertical-align: middle;
+}
+.todo-table thead th.todo-check-cell {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray-400);
+}
+.todo-checkbox { display: none; }
+.todo-check-custom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; height: 20px;
   border-radius: 50%;
   border: 2px solid var(--gray-300);
-  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
   transition: all 0.15s;
-  flex-shrink: 0;
+  background: white;
 }
-.todo-radio-custom:hover { border-color: var(--primary); }
-.todo-radio-custom.is-done {
+.todo-check-custom:hover { border-color: var(--primary); background: var(--primary-light); }
+.todo-checkbox:checked + .todo-check-custom {
   background: var(--green);
   border-color: var(--green);
 }
-.todo-radio-custom.is-done::after {
-  content: '✓';
-  color: white;
-  font-size: 0.65rem;
+.todo-check-icon {
+  font-size: 0.7rem;
   font-weight: 700;
+  color: white;
+  line-height: 1;
 }
 
 /* Text cell */
