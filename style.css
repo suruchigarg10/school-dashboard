@@ -687,17 +687,19 @@ input[type="month"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px; height: 20px;
+  width: 22px; height: 22px;
   border-radius: 50%;
-  border: 2px solid var(--gray-300);
+  border: 2.5px solid var(--gray-400);
   cursor: pointer;
   transition: all 0.15s;
   background: white;
+  box-shadow: 0 0 0 1px var(--gray-200);
 }
-.todo-check-custom:hover { border-color: var(--primary); background: var(--primary-light); }
+.todo-check-custom:hover { border-color: var(--primary); background: var(--primary-light); box-shadow: none; }
 .todo-checkbox:checked + .todo-check-custom {
   background: var(--green);
   border-color: var(--green);
+  box-shadow: none;
 }
 .todo-check-icon {
   font-size: 0.7rem;
