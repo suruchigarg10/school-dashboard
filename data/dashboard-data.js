@@ -714,7 +714,18 @@ window.DASHBOARD_DATA = {
       "homeworkItems": []
     }
   ],
-  "topicLog": [],
+  "topicLog": [
+    {"subject": "Math", "topic": "Large Numbers — Place value up to crores, Indian vs International system", "date": "2026-04-10", "source": "Math Weekly Update"},
+    {"subject": "Math", "topic": "Arithmetic Expressions — BODMAS rule, brackets and order of operations", "date": "2026-04-08", "source": "Math Weekly Update"},
+    {"subject": "Math", "topic": "Algebraic Expressions — Variables, constants, like and unlike terms", "date": "2026-04-05", "source": "Math Weekly Update"},
+    {"subject": "Social Science", "topic": "Medieval India — Delhi Sultanate, Slave Dynasty and key rulers", "date": "2026-04-10", "source": "Social Science Friday Updates"},
+    {"subject": "Social Science", "topic": "Physical Geography — Interior of the Earth, types of rocks", "date": "2026-04-07", "source": "Social Science Friday Updates"},
+    {"subject": "Biology", "topic": "Nutrition in Plants — Photosynthesis, autotrophs vs heterotrophs", "date": "2026-04-09", "source": "Biology Weekly"},
+    {"subject": "Biology", "topic": "Nutrition in Animals — Digestion in humans, alimentary canal", "date": "2026-04-04", "source": "Biology Weekly"},
+    {"subject": "Physics", "topic": "Heat — Conduction, convection, radiation and real-life examples", "date": "2026-04-08", "source": "Physics Update"},
+    {"subject": "Chemistry", "topic": "Acids, Bases and Salts — pH scale, indicators, neutralisation", "date": "2026-04-06", "source": "Chemistry Update"},
+    {"subject": "English", "topic": "The Tiny Teacher — comprehension, summary writing, figures of speech", "date": "2026-04-03", "source": "English Weekly"}
+  ],
   "quizLog": [],
   "examSchedule": [],
   "holidays": [],
