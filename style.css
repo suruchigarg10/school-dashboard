@@ -579,6 +579,64 @@ input[type="month"] {
   color: var(--gray-600);
 }
 
+/* TODO SECTIONS */
+.todo-section { border-bottom: 1px solid var(--gray-200); }
+.todo-section:last-child { border-bottom: none; }
+
+.todo-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem;
+  cursor: pointer;
+  background: var(--gray-50);
+  user-select: none;
+  transition: background 0.1s;
+}
+.todo-section-header:hover { background: var(--gray-100); }
+
+.todo-section-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+.todo-section-count {
+  font-size: 0.775rem;
+  color: var(--gray-400);
+  margin-left: auto;
+}
+.todo-section-toggle { font-size: 0.7rem; color: var(--gray-400); }
+
+.todo-section-body { display: none; }
+.todo-section-body.open { display: block; }
+
+/* SUBJECT FILTER PILLS */
+.todo-subject-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--gray-100);
+  background: white;
+}
+.subject-pill {
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 99px;
+  border: 1px solid var(--gray-200);
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+}
+.subject-pill:hover { border-color: var(--primary); color: var(--primary); }
+.subject-pill.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
 /* TODO TABLE */
 .todo-table {
   width: 100%;

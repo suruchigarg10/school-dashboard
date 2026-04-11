@@ -538,21 +538,28 @@ async function toggleTodo(id, checkbox) {
 }
 
 // Collect ALL todoItems across all days for a kid
+// Enriches each todo with: category, schoolSubject, emailDate
 function collectAllTodos(kid) {
   const items = [];
-  if (kid === "arjun") {
-    DATA.days.forEach(day => {
-      (day.emails || []).forEach(email => {
-        (email.todoItems || []).forEach(t => items.push({ ...t, date: day.date }));
-      });
+  const days = kid === "arjun" ? DATA.days : (DATA.myra?.days || []);
+  days.forEach(day => {
+    (day.emails || []).forEach(email => {
+      const tags    = email.tags || [];
+      const subject = email.schoolSubject || null;
+      // Categorise by parent email tags
+      let category;
+      if (tags.includes("hw"))         category = "homework";
+      else if (tags.includes("veracross")) category = "veracross";
+      else                              category = "general";
+
+      (email.todoItems || []).forEach(t => items.push({
+        ...t,
+        date:         day.date,
+        category,
+        schoolSubject: subject,
+      }));
     });
-  } else {
-    (DATA.myra?.days || []).forEach(day => {
-      (day.emails || []).forEach(email => {
-        (email.todoItems || []).forEach(t => items.push({ ...t, date: day.date }));
-      });
-    });
-  }
+  });
   return items;
 }
 
@@ -574,129 +581,185 @@ function isOverdue(d) {
   return new Date(d) < new Date() && !isTodoDone;
 }
 
-function renderTodoItems(containerId, metaId, todos) {
-  const el   = document.getElementById(containerId);
-  const meta = document.getElementById(metaId);
+// ── Todo table helpers ─────────────────────────────────────
 
-  if (!todos.length) {
-    el.innerHTML = '<p class="muted">No action items yet.</p>';
-    if (meta) meta.textContent = '';
-    return;
-  }
-
+function sortTodos(todos) {
   const open   = todos.filter(t => !isTodoDone(t.id));
   const closed = todos.filter(t =>  isTodoDone(t.id));
-
-  // Sort open: overdue first, then by due date asc, then no date last
   open.sort((a, b) => {
+    const aOver = a.dueDate && new Date(a.dueDate) < new Date();
+    const bOver = b.dueDate && new Date(b.dueDate) < new Date();
+    if (aOver && !bOver) return -1;
+    if (!aOver && bOver) return  1;
     if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
     if (a.dueDate) return -1;
     if (b.dueDate) return  1;
     return 0;
   });
+  return { open, closed };
+}
 
-  if (meta) meta.textContent = `${open.length} open · ${closed.length} done`;
+function renderRow(t, isDone) {
+  const state    = _todoState[t.id];
+  const doneAt   = state?.doneAt
+    ? new Date(state.doneAt).toLocaleDateString('en-IN', { day:'numeric', month:'short' }) : '';
+  const overdue  = !isDone && t.dueDate && new Date(t.dueDate) < new Date();
+  const soon     = !isDone && isDueSoon(t.dueDate);
+  const dueCls   = overdue ? 'todo-overdue' : soon ? 'todo-soon' : '';
+  const owner    = t.owner || '—';
+  const ownerCls = owner === 'Arjun' ? 'owner-arjun' : owner === 'Parent' ? 'owner-parent' : '';
 
-  const renderRow = (t, isDone) => {
-    const state     = _todoState[t.id];
-    const doneAt    = state?.doneAt
-      ? new Date(state.doneAt).toLocaleDateString('en-IN', { day:'numeric', month:'short' })
-      : '';
-    const overdue   = !isDone && t.dueDate && new Date(t.dueDate) < new Date();
-    const soon      = !isDone && isDueSoon(t.dueDate);
-    const dueCls    = overdue ? 'todo-overdue' : soon ? 'todo-soon' : '';
-    const owner     = t.owner || '—';
-    const ownerCls  = owner === 'Arjun' ? 'owner-arjun' : owner === 'Parent' ? 'owner-parent' : '';
-
-    return `
-      <tr class="${isDone ? 'todo-row-done' : 'todo-row-open'}">
-        <td class="todo-radio-cell">
-          <label class="todo-radio-label" title="${isDone ? 'Mark as open' : 'Mark as done'}">
-            <input type="radio" class="todo-radio" name="td-${t.id}"
-              ${isDone ? 'checked' : ''}
-              onchange="toggleTodo('${t.id}', this)">
-            <span class="todo-radio-custom ${isDone ? 'is-done' : ''}"></span>
-          </label>
-        </td>
-        <td class="todo-text-cell ${isDone ? 'todo-text-done' : ''}">
-          ${escHtml(t.text)}
-          ${isDone && doneAt ? `<span class="todo-done-at">✅ Done ${doneAt}</span>` : ''}
-        </td>
-        <td><span class="owner-badge ${ownerCls}">${escHtml(owner)}</span></td>
-        <td class="todo-due-cell ${dueCls}">
-          ${t.dueDate ? formatDueDate(t.dueDate) : '—'}
-          ${overdue ? '<span class="todo-overdue-badge">Overdue</span>' : ''}
-          ${soon && !overdue ? '<span class="todo-soon-badge">Soon</span>' : ''}
-        </td>
-        <td class="todo-source-cell">
-          <a href="#" class="todo-source-link"
-            onclick="jumpToHistory('${escHtml(t.source || '')}'); return false;">
-            ${escHtml(t.source || '—')}
-          </a>
-        </td>
-      </tr>`;
-  };
-
-  const tableHead = `
-    <table class="todo-table">
-      <thead>
-        <tr>
-          <th class="todo-radio-cell"></th>
-          <th>To Do</th>
-          <th>Owner</th>
-          <th>Due Date</th>
-          <th>Reference</th>
-        </tr>
-      </thead>
-      <tbody>`;
-
-  let html = tableHead;
-  html += open.map(t => renderRow(t, false)).join('');
-
-  if (closed.length) {
-    html += `<tr class="todo-divider-row">
-      <td colspan="5">
-        <span class="todo-divider-label" onclick="toggleDoneRows(this)">
-          ✅ ${closed.length} completed — <span class="toggle-label">show</span>
-        </span>
+  return `
+    <tr class="${isDone ? 'todo-row-done' : 'todo-row-open'}">
+      <td class="todo-radio-cell">
+        <label class="todo-radio-label" title="${isDone ? 'Mark as open' : 'Mark as done'}">
+          <input type="radio" class="todo-radio" name="td-${t.id}"
+            ${isDone ? 'checked' : ''}
+            onchange="toggleTodo('${t.id}', this)">
+          <span class="todo-radio-custom ${isDone ? 'is-done' : ''}"></span>
+        </label>
+      </td>
+      <td class="todo-text-cell ${isDone ? 'todo-text-done' : ''}">
+        ${escHtml(t.text)}
+        ${isDone && doneAt ? `<span class="todo-done-at">✅ Done ${doneAt}</span>` : ''}
+      </td>
+      <td><span class="owner-badge ${ownerCls}">${escHtml(owner)}</span></td>
+      <td class="todo-due-cell ${dueCls}">
+        ${t.dueDate ? formatDueDate(t.dueDate) : '—'}
+        ${overdue ? '<span class="todo-overdue-badge">Overdue</span>' : ''}
+        ${soon && !overdue ? '<span class="todo-soon-badge">Soon</span>' : ''}
+      </td>
+      <td class="todo-source-cell">
+        <a href="#" class="todo-source-link"
+          onclick="jumpToHistory('${escHtml(t.source || '')}'); return false;">
+          ${escHtml(t.source || '—')}
+        </a>
       </td>
     </tr>`;
-    html += `<tbody class="todo-done-rows" style="display:none">`;
-    html += closed.map(t => renderRow(t, true)).join('');
-    html += `</tbody>`;
-  }
+}
 
-  html += `</tbody></table>`;
-  el.innerHTML = html;
+function buildTable(todos, tableId) {
+  if (!todos.length) return '<p class="muted" style="padding:1rem 1.5rem">No items.</p>';
+  const { open, closed } = sortTodos(todos);
+  let html = `<table class="todo-table" id="${tableId}">
+    <thead><tr>
+      <th class="todo-radio-cell"></th>
+      <th>To Do</th><th>Owner</th><th>Due Date</th><th>Reference</th>
+    </tr></thead><tbody>`;
+  html += open.map(t => renderRow(t, false)).join('');
+  if (closed.length) {
+    html += `<tr class="todo-divider-row"><td colspan="5">
+      <span class="todo-divider-label" onclick="toggleDoneRows(this)">
+        ✅ ${closed.length} completed — <span class="toggle-label">show</span>
+      </span></td></tr>`;
+    html += `<tr class="todo-done-expander" style="display:none"><td colspan="5" style="padding:0">
+      <table class="todo-table" style="width:100%"><tbody>
+        ${closed.map(t => renderRow(t, true)).join('')}
+      </tbody></table></td></tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
 }
 
 window.toggleDoneRows = function(el) {
-  const tbody = el.closest('table').querySelector('.todo-done-rows');
+  const row   = el.closest('tr').nextElementSibling;
   const label = el.querySelector('.toggle-label');
-  const hidden = tbody.style.display === 'none';
-  tbody.style.display = hidden ? '' : 'none';
-  label.textContent   = hidden ? 'hide' : 'show';
+  const hidden = row.style.display === 'none';
+  row.style.display = hidden ? '' : 'none';
+  label.textContent = hidden ? 'hide' : 'show';
 };
 
-window.jumpToHistory = function(source) {
-  // Switch to history tab and highlight matching source
+window.jumpToHistory = function() {
   document.querySelectorAll('#arjun-tabs .tab').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('#arjun-content .tab-content').forEach(s => s.classList.remove('active'));
   const histTab = document.querySelector('#arjun-tabs .tab[data-tab="history"]');
   if (histTab) histTab.classList.add('active');
   document.getElementById('tab-history').classList.add('active');
-  // Expand all sections so the email is visible
   document.querySelectorAll('.hist-section-body').forEach(b => b.classList.add('open'));
 };
 
+// ── Sectioned todo panel ───────────────────────────────────
+
+let _hwSubjectFilter = 'all'; // active homework subject filter
+
 function renderTodosPanel() {
-  const todos = collectAllTodos("arjun");
-  renderTodoItems("todoList", "todoPanelMeta", todos);
+  const all = collectAllTodos("arjun");
+  const el  = document.getElementById("todoList");
+  const meta = document.getElementById("todoPanelMeta");
+
+  const hw       = all.filter(t => t.category === 'homework');
+  const vc       = all.filter(t => t.category === 'veracross');
+  const general  = all.filter(t => t.category === 'general');
+
+  const openCount = all.filter(t => !isTodoDone(t.id)).length;
+  const doneCount = all.filter(t =>  isTodoDone(t.id)).length;
+  if (meta) meta.textContent = `${openCount} open · ${doneCount} done`;
+
+  // Subject pills for homework filter
+  const subjects = [...new Set(hw.map(t => t.schoolSubject).filter(Boolean))];
+  const hwFiltered = _hwSubjectFilter === 'all'
+    ? hw
+    : hw.filter(t => t.schoolSubject === _hwSubjectFilter);
+
+  const subjectPills = subjects.length > 1
+    ? `<div class="todo-subject-pills">
+        <span class="subject-pill ${_hwSubjectFilter === 'all' ? 'active' : ''}"
+          onclick="setHwFilter('all')">All subjects</span>
+        ${subjects.map(s => `
+          <span class="subject-pill ${_hwSubjectFilter === s ? 'active' : ''}"
+            onclick="setHwFilter('${s}')">${s}</span>
+        `).join('')}
+      </div>` : '';
+
+  el.innerHTML = `
+    ${renderTodoSection('📚 Homework', hw, hwFiltered, subjectPills, 'hw-table', openCount)}
+    ${renderTodoSection('🏫 Veracross', vc, vc, '', 'vc-table', openCount)}
+    ${renderTodoSection('📋 General Actions', general, general, '', 'gen-table', openCount)}
+  `;
 }
+
+function renderTodoSection(title, allItems, visibleItems, pillsHtml, tableId, totalOpen) {
+  const open = allItems.filter(t => !isTodoDone(t.id)).length;
+  if (!allItems.length) return '';
+  return `
+    <div class="todo-section">
+      <div class="todo-section-header" onclick="toggleTodoSection(this)">
+        <span class="todo-section-title">${title}</span>
+        <span class="todo-section-count">${open} open</span>
+        <span class="todo-section-toggle">▲</span>
+      </div>
+      <div class="todo-section-body open">
+        ${pillsHtml}
+        ${buildTable(visibleItems, tableId)}
+      </div>
+    </div>`;
+}
+
+window.setHwFilter = function(subject) {
+  _hwSubjectFilter = subject;
+  renderTodosPanel();
+};
+
+window.toggleTodoSection = function(header) {
+  const body   = header.nextElementSibling;
+  const toggle = header.querySelector('.todo-section-toggle');
+  const open   = body.classList.toggle('open');
+  toggle.textContent = open ? '▲' : '▼';
+};
 
 function renderMyraTodosPanel() {
   const todos = collectAllTodos("myra");
-  renderTodoItems("myraTodoList", "myraTodoPanelMeta", todos);
+  const el    = document.getElementById("myraTodoList");
+  const meta  = document.getElementById("myraTodoPanelMeta");
+  if (!todos.length) {
+    el.innerHTML = '<p class="muted">No action items yet.</p>';
+    if (meta) meta.textContent = '';
+    return;
+  }
+  const openCount = todos.filter(t => !isTodoDone(t.id)).length;
+  const doneCount = todos.filter(t =>  isTodoDone(t.id)).length;
+  if (meta) meta.textContent = `${openCount} open · ${doneCount} done`;
+  el.innerHTML = buildTable(todos, 'myra-todo-table');
 }
 
 // ── Init ───────────────────────────────────────────────────
