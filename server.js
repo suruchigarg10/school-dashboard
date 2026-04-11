@@ -55,7 +55,7 @@ app.post('/api/quiz/generate', async (req, res) => {
   try {
     const { GoogleGenerativeAI } = require('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = customPrompt || `You are generating a quiz for Arjun, a Grade 7 student at Shiv Nadar School, Gurugram.
 Subject: ${subject}
@@ -82,12 +82,36 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
     const match    = stripped.match(/\[[\s\S]*\]/);
     if (!match) throw new Error('Gemini response did not contain a JSON array');
 
-    const questions = JSON.parse(match[0]);
-    if (!Array.isArray(questions) || !questions.length) {
+    const raw = JSON.parse(match[0]);
+    if (!Array.isArray(raw) || !raw.length) {
       throw new Error('Gemini returned an empty question list');
     }
 
-    res.json({ questions: questions.slice(0, 20) });
+    const LABELS = ['A', 'B', 'C', 'D'];
+
+    // Normalise each question to the exact shape the frontend expects:
+    //   { q, options: ["A) ...", "B) ...", "C) ...", "D) ..."], answer: "A" }
+    const questions = raw.slice(0, 20).map(item => {
+      // Accept both "q" and "question" keys
+      const qText = (item.q || item.question || '').trim();
+
+      // Normalise options: add "A) " prefix if missing
+      const opts = (item.options || []).slice(0, 4).map((opt, i) => {
+        const s = String(opt).trim();
+        // Already has a label like "A)" or "A." or "A) "
+        if (/^[A-D][).]\s/i.test(s)) return s.replace(/^([A-D])[).]?\s*/i, (_, l) => `${l.toUpperCase()}) `);
+        return `${LABELS[i]}) ${s}`;
+      });
+
+      // Normalise answer: accept "A", "A)", "A) text", index 0, etc.
+      let ans = String(item.answer || 'A').trim().toUpperCase();
+      if (ans.length > 1) ans = ans[0]; // keep just the letter
+      if (!LABELS.includes(ans)) ans = 'A';
+
+      return { q: qText, options: opts, answer: ans };
+    });
+
+    res.json({ questions });
   } catch (err) {
     console.error('Quiz generation error:', err.message);
     res.status(500).json({ error: err.message });
