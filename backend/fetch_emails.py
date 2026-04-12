@@ -309,7 +309,7 @@ If kid="skip":
 {{"kid":"skip"}}"""
 
     resp = _get_client().messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-3-haiku-20240307",
         max_tokens=800,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -376,7 +376,7 @@ def build_arjun_day_summary(processed: list[dict], subjects: list[str], target_d
         )
     bullets = "\n".join(f"- {e['subject']}: {e['summary']}" for e in processed)
     resp = _get_client().messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-3-haiku-20240307",
         max_tokens=200,
         messages=[{"role": "user", "content":
             f"Write a 3-4 sentence daily briefing for parents about their Grade 7 child's school day.\n"
