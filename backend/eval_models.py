@@ -387,9 +387,164 @@ def _print_report(results: list[EmailResult]):
 
 
 # ── Main ─────────────────────────────────────────────────────
+def _write_html_report(results: list[EmailResult], days: int):
+    """Write a full side-by-side HTML comparison report."""
+    import html as html_lib
+    out_path = BASE_DIR / "eval_report.html"
+
+    def h(s): return html_lib.escape(str(s))
+    def fmt_list(items, key=None):
+        if not items: return "<em>—</em>"
+        if key:
+            rows = "".join(f"<li>{h(i.get(key,''))}</li>" for i in items)
+        else:
+            rows = "".join(f"<li>{h(i)}</li>" for i in items)
+        return f"<ul>{rows}</ul>"
+    def fmt_topics(items):
+        if not items: return "<em>—</em>"
+        rows = "".join(f"<li><b>{h(i.get('subject',''))}</b>: {h(i.get('topic',''))}</li>"
+                       for i in items)
+        return f"<ul>{rows}</ul>"
+    def fmt_todos(items):
+        if not items: return "<em>—</em>"
+        rows = "".join(
+            f"<li>[{h(i.get('owner','?'))}] {h(i.get('text',''))} "
+            f"<span style='color:#888'>due {h(i.get('dueDate','?'))}</span></li>"
+            for i in items)
+        return f"<ul>{rows}</ul>"
+    def badge(ok, label=""):
+        color = "#22c55e" if ok else "#ef4444"
+        return f"<span style='background:{color};color:#fff;padding:2px 8px;border-radius:9px;font-size:12px'>{h(label) or ('✓' if ok else '✗')}</span>"
+
+    school = [r for r in results if r.claude_kid != "skip"]
+    skipped = [r for r in results if r.claude_kid == "skip"]
+    n = len(school)
+    json_ok   = sum(1 for r in school if r.json_valid)
+    schema_ok = sum(1 for r in school if r.schema_ok)
+    kid_ok    = sum(1 for r in school if r.kid_match)
+    subj_ok   = sum(1 for r in school if r.claude_kid=="arjun" and r.subject_match)
+    arjun_n   = sum(1 for r in school if r.claude_kid=="arjun")
+
+    def pct(a,b): return f"{a/b*100:.0f}%" if b else "–"
+
+    cards = []
+    for r in school:
+        ce = r.claude_stored
+        stored = ce.get("stored", {}) if ce else {}
+        ge = r.gemini_raw
+
+        # field-by-field rows
+        def row(label, cval, gval, match=None):
+            if match is None:
+                match = (str(cval).strip().lower() == str(gval).strip().lower())
+            bg = "" if match else "background:#fff3cd"
+            return (f"<tr style='{bg}'>"
+                    f"<td style='font-weight:600;padding:4px 8px;width:130px'>{h(label)}</td>"
+                    f"<td style='padding:4px 8px;width:40%'>{cval}</td>"
+                    f"<td style='padding:4px 8px;width:40%'>{gval}</td>"
+                    f"<td style='padding:4px 8px'>{badge(match)}</td>"
+                    f"</tr>")
+
+        claude_topics = [{"subject":t.get("subject",""),"topic":t.get("topic","")}
+                         for t in ce.get("topics",[]) if ce] if ce else []
+        gemini_topics = ge.get("topicsCovered", [])
+        topics_match  = len(claude_topics) == len(gemini_topics)
+
+        claude_todos  = stored.get("todoItems", [])
+        gemini_todos  = ge.get("todoItems", [])
+        todos_match   = len(claude_todos) == len(gemini_todos)
+
+        rows_html = "".join([
+            row("kid",          r.claude_kid,                       r.gemini_kid,              r.kid_match),
+            row("schoolSubject",stored.get("schoolSubject","–"),    ge.get("schoolSubject","–"),r.subject_match),
+            row("tags",         ", ".join(stored.get("tags",[])),   ", ".join(ge.get("tags",[])) ),
+            row("summary",      h(stored.get("summary","–")),       h(ge.get("summary","–")),   True),
+            row("topics",       fmt_topics(claude_topics),          fmt_topics(gemini_topics),  topics_match),
+            row("todos",        fmt_todos(claude_todos),            fmt_todos(gemini_todos),    todos_match),
+            row("JSON valid",   "✓",                                "✓" if r.json_valid else "✗", r.json_valid),
+            row("schema ok",    "✓",                                "✓" if r.schema_ok  else "✗", r.schema_ok),
+        ])
+
+        overall_ok = r.kid_match and r.json_valid and r.schema_ok
+        header_bg  = "#f0fdf4" if overall_ok else "#fff7ed"
+        cards.append(f"""
+<div style="border:1px solid #e2e8f0;border-radius:10px;margin:16px 0;overflow:hidden">
+  <div style="background:{header_bg};padding:10px 16px;border-bottom:1px solid #e2e8f0;display:flex;gap:12px;align-items:center">
+    <span style="font-weight:700">{h(r.subject)}</span>
+    <span style="color:#64748b;font-size:13px">{h(r.date_str)}</span>
+    {badge(r.kid_match, r.gemini_kid)}
+    {badge(r.json_valid, 'JSON')}
+    {badge(r.schema_ok, 'schema')}
+    {"".join(f'<span style="color:#dc2626;font-size:12px">{h(e)}</span>' for e in r.errors)}
+  </div>
+  <div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;font-size:14px">
+    <thead><tr style="background:#f8fafc;font-size:12px;color:#64748b">
+      <th style="padding:4px 8px;text-align:left">Field</th>
+      <th style="padding:4px 8px;text-align:left">Claude (stored)</th>
+      <th style="padding:4px 8px;text-align:left">Gemini</th>
+      <th style="padding:4px 8px;text-align:left">Match</th>
+    </tr></thead>
+    <tbody>{rows_html}</tbody>
+  </table>
+  </div>
+</div>""")
+
+    skipped_rows = "".join(
+        f"<tr><td style='padding:3px 8px;color:#64748b'>{h(r.subject)}</td>"
+        f"<td style='padding:3px 8px'>{badge(r.kid_match, r.gemini_kid or 'skip')}</td></tr>"
+        for r in skipped)
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gemini vs Claude — Eval Report</title>
+<style>
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         max-width: 1100px; margin: 0 auto; padding: 24px; color: #1e293b; }}
+  h1   {{ font-size: 22px; margin-bottom: 4px; }}
+  .stat-grid {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:20px 0; }}
+  .stat {{ background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;
+           padding:14px; text-align:center; }}
+  .stat .num {{ font-size:28px; font-weight:700; }}
+  .stat .lbl {{ font-size:12px; color:#64748b; margin-top:2px; }}
+  ul {{ margin:4px 0; padding-left:18px; }}
+  li {{ margin:2px 0; }}
+</style>
+</head>
+<body>
+<h1>🔬 Gemini 2.5 Flash vs Claude — Eval Report</h1>
+<p style="color:#64748b">Last {days} days &nbsp;·&nbsp; {n} school emails evaluated &nbsp;·&nbsp;
+{len(skipped)} non-school correctly skipped</p>
+
+<div class="stat-grid">
+  <div class="stat"><div class="num">{pct(json_ok,n)}</div><div class="lbl">JSON valid</div></div>
+  <div class="stat"><div class="num">{pct(schema_ok,n)}</div><div class="lbl">Schema correct</div></div>
+  <div class="stat"><div class="num">{pct(kid_ok,n)}</div><div class="lbl">Kid classification</div></div>
+  <div class="stat"><div class="num">{pct(subj_ok,arjun_n)}</div><div class="lbl">Subject tagging</div></div>
+</div>
+
+<h2 style="font-size:17px;margin-top:28px">School emails — full comparison</h2>
+{''.join(cards)}
+
+<h2 style="font-size:17px;margin-top:28px">Non-school emails (skipped by Claude)</h2>
+<table style="font-size:13px;border-collapse:collapse">
+  <thead><tr><th style="padding:3px 8px;text-align:left">Subject</th>
+  <th style="padding:3px 8px;text-align:left">Gemini said</th></tr></thead>
+  <tbody>{skipped_rows}</tbody>
+</table>
+
+</body></html>"""
+
+    out_path.write_text(html, encoding="utf-8")
+    return out_path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Eval Gemini vs Claude on stored email data")
-    parser.add_argument("--days", type=int, default=7, help="How many days back to evaluate")
+    parser.add_argument("--days",   type=int,  default=7,    help="How many days back to evaluate")
+    parser.add_argument("--report", action="store_true",     help="Write full HTML report and open in browser")
     args = parser.parse_args()
 
     print(f"\n🔬  Model Eval: Gemini 2.5 Flash vs Claude (stored ground truth)")
@@ -463,6 +618,12 @@ def main():
 
     mail.logout()
     _print_report(results)
+
+    if args.report:
+        out = _write_html_report(results, args.days)
+        print(f"\n📄  HTML report written → {out}")
+        import subprocess
+        subprocess.run(["open", str(out)])  # opens in default browser on macOS
 
 
 if __name__ == "__main__":
