@@ -6,10 +6,15 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs   = require('fs');
 
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+// On Render (and other PaaS), use /tmp for writable storage.
+// Locally, use data/ so the file persists across restarts.
+const DB_DIR = process.env.NODE_ENV === 'production'
+  ? '/tmp'
+  : path.join(__dirname, 'data');
 
-const db = new Database(path.join(DATA_DIR, 'dashboard.db'));
+if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+
+const db = new Database(path.join(DB_DIR, 'dashboard.db'));
 db.pragma('journal_mode = WAL');
 
 db.exec(`
