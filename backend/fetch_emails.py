@@ -27,9 +27,9 @@ from email.header import decode_header
 from pathlib import Path
 
 import io
-import anthropic
 import pdfplumber
 from dotenv import load_dotenv
+from google import genai
 
 # ── Config ─────────────────────────────────────────────────
 load_dotenv(Path(__file__).parent.parent / ".env", override=True)
@@ -202,7 +202,7 @@ def fetch_all_emails_for_date(mail: imaplib.IMAP4_SSL, target_date: date) -> lis
 # ── Claude ─────────────────────────────────────────────────
 
 def _get_client():
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"].strip())
+    return genai.Client(api_key=os.environ["GEMINI_API_KEY"].strip())
 
 
 def _parse_json(text: str) -> dict:
@@ -308,12 +308,11 @@ If kid="myra":
 If kid="skip":
 {{"kid":"skip"}}"""
 
-    resp = _get_client().messages.create(
-        model="claude-3-haiku-20240307",
-        max_tokens=800,
-        messages=[{"role": "user", "content": prompt}],
+    resp = _get_client().models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
     )
-    result = _parse_json(resp.content[0].text)
+    result = _parse_json(resp.text)
     kid = result.get("kid", "skip")
 
     if kid == "skip" or not kid:
@@ -375,17 +374,16 @@ def build_arjun_day_summary(processed: list[dict], subjects: list[str], target_d
             f"Today's subjects: {', '.join(subjects)}."
         )
     bullets = "\n".join(f"- {e['subject']}: {e['summary']}" for e in processed)
-    resp = _get_client().messages.create(
-        model="claude-3-haiku-20240307",
-        max_tokens=200,
-        messages=[{"role": "user", "content":
+    resp = _get_client().models.generate_content(
+        model="gemini-2.5-flash",
+        contents=(
             f"Write a 3-4 sentence daily briefing for parents about their Grade 7 child's school day.\n"
             f"Today is {day_name}, {date_str}. Subjects: {', '.join(subjects)}.\n\n"
             f"Email summaries:\n{bullets}\n\n"
             "Plain, warm, flowing sentences. No bullet points."
-        }],
+        ),
     )
-    return resp.content[0].text.strip()
+    return resp.text.strip()
 
 
 def build_myra_day_summary(processed: list[dict], target_date: date) -> str:
