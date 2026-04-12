@@ -605,6 +605,9 @@ def main():
             gemini_out = {}
             gemini_kid = "error"
 
+        # Rate limit: free tier = 15 req/min → wait 5s between calls
+        import time; time.sleep(5)
+
         r = EmailResult(
             subject       = subject,
             date_str      = target_date.isoformat(),

@@ -406,9 +406,11 @@ def process_day(target_date: date, data: dict, timetable: dict, mail: imaplib.IM
     arjun_processed, myra_processed = [], []
     all_hw, all_vc, all_topics, all_exams, all_holidays = [], [], [], [], []
 
+    import time as _time
     for raw in raw_emails:
         print(f"   🔍 {raw['subject'][:70]}")
         result = classify_and_summarise(raw, target_date, core_today)
+        _time.sleep(5)  # stay within Gemini free tier: 15 req/min
         if result is None:
             continue
 
