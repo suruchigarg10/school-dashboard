@@ -286,18 +286,9 @@ If kid="arjun":
     Leave "id" as empty string "".
   homeworkItems: [{{"subject":"Math","description":"...","dueDate":"YYYY-MM-DD"}}] or []
   veracrossItems: [{{"action":"...","detail":"...","done":false}}] only for Veracross portal actions
-  topicsCovered: Extract ONLY if this is clearly a teacher/subject email (not admin/event/circular).
-    Format: [{{"subject":"Math","topic":"Algebraic Expressions — Variables and Constants"}}]
-    Keep topic names specific and descriptive (chapter name + concept). Max 4 topics per email.
-    Leave empty [] for non-academic emails (admin, fees, events, transport, Veracross).
-  examSchedule: Extract ONLY if the email announces upcoming test/exam dates with actual dates.
-    Format: [{{"examType":"UT1","subject":"Math","examDate":"YYYY-MM-DD","topics":"Linear equations, Quadratic expressions"}}]
-    examType must be one of: "UT1", "UT2", "MidTerm", "FinalTerm", "ClassTest", "Other"
-    Leave empty [] if no exam dates are mentioned.
-  holidays: Extract ONLY if the email announces school closure or holidays on specific dates.
-    Format: [{{"date":"YYYY-MM-DD","name":"Diwali Break","type":"holiday"}}]
-    type: "holiday" for school-declared off days, "event" for school events on those dates.
-    Leave empty [] if no holiday/closure dates mentioned.
+  topicsCovered: Teacher/subject emails only. [{{"subject":"Math","topic":"Chapter + concept, specific"}}] Max 4. [] for admin/fee/event emails.
+  examSchedule: Only if actual exam dates mentioned. [{{"examType":"UT1|UT2|MidTerm|FinalTerm|ClassTest|Other","subject":"Math","examDate":"YYYY-MM-DD","topics":"..."}}] else [].
+  holidays: Only if school closure/holiday dates mentioned. [{{"date":"YYYY-MM-DD","name":"Diwali Break","type":"holiday"}}] else [].
 
 If kid="myra":
 {{
@@ -318,7 +309,7 @@ If kid="skip":
 {{"kid":"skip"}}"""
 
     resp = _get_client().messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-haiku-4-5-20251001",
         max_tokens=800,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -385,7 +376,7 @@ def build_arjun_day_summary(processed: list[dict], subjects: list[str], target_d
         )
     bullets = "\n".join(f"- {e['subject']}: {e['summary']}" for e in processed)
     resp = _get_client().messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-haiku-4-5-20251001",
         max_tokens=200,
         messages=[{"role": "user", "content":
             f"Write a 3-4 sentence daily briefing for parents about their Grade 7 child's school day.\n"
