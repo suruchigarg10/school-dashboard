@@ -121,10 +121,14 @@ def _clean_text(text: str) -> str:
 
 def _extract_pdf_text(data: bytes) -> str:
     """Extract text from a PDF attachment. Returns '' on failure."""
+    import warnings, logging
+    logging.getLogger("pdfminer").setLevel(logging.ERROR)
     try:
-        with pdfplumber.open(io.BytesIO(data)) as pdf:
-            pages = [p.extract_text() or "" for p in pdf.pages[:6]]  # cap at 6 pages
-            return _clean_text("\n\n".join(pages))[:3000]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            with pdfplumber.open(io.BytesIO(data)) as pdf:
+                pages = [p.extract_text() or "" for p in pdf.pages[:6]]  # cap at 6 pages
+                return _clean_text("\n\n".join(pages))[:3000]
     except Exception:
         return ""
 
