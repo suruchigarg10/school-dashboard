@@ -286,8 +286,8 @@ If kid="arjun":
     Leave "id" as empty string "".
   homeworkItems: [{{"subject":"Math","description":"...","dueDate":"YYYY-MM-DD"}}] or []
   veracrossItems: [{{"action":"...","detail":"...","done":false}}] only for Veracross portal actions
-  topicsCovered: Teacher/subject emails only. [{{"subject":"Math","topic":"Chapter + concept, specific"}}] Max 4. [] for admin/fee/event emails.
-  examSchedule: Only if actual exam dates mentioned. [{{"examType":"UT1|UT2|MidTerm|FinalTerm|ClassTest|Other","subject":"Math","examDate":"YYYY-MM-DD","topics":"..."}}] else [].
+  topicsCovered: Teacher/subject emails only. [{{"subject":"Math","topic":"Chapter + concept, be specific e.g. 'Ch 4: Rational Numbers - comparing fractions'"}}] Up to 4 DISTINCT topics/chapters — each entry must cover a genuinely different concept, not the same thing rephrased. If two extracted topics are about the same chapter/concept, merge them into one. [] for admin/fee/event emails.
+  examSchedule: Only actual exam dates for Grade 7 Arjun. Do NOT include senior grade exams (Grade 10/11/12, IBDP, CBSE Board). [{{"examType":"UT1|UT2|MidTerm|FinalTerm|ClassTest|Other","subject":"Math","examDate":"YYYY-MM-DD","topics":"..."}}] else [].
   holidays: Only if school closure/holiday dates mentioned. [{{"date":"YYYY-MM-DD","name":"Diwali Break","type":"holiday"}}] else [].
 
 If kid="myra":
@@ -459,20 +459,31 @@ def process_day(target_date: date, data: dict, timetable: dict, mail: imaplib.IM
         else:
             data["veracrossLog"].insert(0, {"date": date_str, "items": all_vc})
 
-    # Topic log — cumulative, deduplicate by subject+topic
+    # Topic log — cumulative, deduplicate by subject+date+first-50-chars-of-topic
     topic_log = data.setdefault("topicLog", [])
     for t in all_topics:
+        topic_prefix = t["topic"][:50].lower().strip()
         existing = next(
-            (x for x in topic_log if x["subject"] == t["subject"] and x["topic"] == t["topic"] and x["date"] == date_str),
+            (x for x in topic_log
+             if x["subject"] == t["subject"]
+             and x["date"] == date_str
+             and x["topic"][:50].lower().strip() == topic_prefix),
             None
         )
         if not existing:
             topic_log.insert(0, t)
             print(f"       📚 Topic: [{t['subject']}] {t['topic'][:60]}")
 
-    # Exam schedule — deduplicate by subject+date
+    # Exam schedule — deduplicate by subject+date; skip non-Grade-7 exams
+    GRADE7_SKIP_KEYWORDS = ["grade 11", "grade 12", "ibdp", "ib dp", "xi ", "xii ", " x ", " x\n",
+                             "cbse board", "class 11", "class 12", "class x ", "class xi", "class xii"]
     exam_sched = data.setdefault("examSchedule", [])
     for e in all_exams:
+        subj_lower   = e.get("subject", "").lower()
+        topics_lower = e.get("topics", "").lower()
+        # Skip if this exam is clearly for senior grades, not Grade 7
+        if any(kw in subj_lower or kw in topics_lower for kw in GRADE7_SKIP_KEYWORDS):
+            continue
         existing = next(
             (x for x in exam_sched if x["subject"] == e["subject"] and x["examDate"] == e["examDate"]),
             None
