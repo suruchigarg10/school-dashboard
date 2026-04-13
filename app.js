@@ -974,16 +974,48 @@ window.openQuizFlow = function(subject, topics) {
   _renderQuizPromptEditor();
 };
 
-function _renderQuizPromptEditor() {
-  const { subject, topics } = _quizState;
-  const defaultPrompt =
-`Generate 20 multiple-choice questions for Arjun, Grade 7, Shiv Nadar School.
+function _buildQuizPrompt(subject, selectedTopics) {
+  if (selectedTopics.length) {
+    return `Generate 20 multiple-choice questions for Arjun, Grade 7, Shiv Nadar School.
 Subject: ${subject}
-Topics covered in class: ${topics.slice(0, 6).join('; ')}${topics.length > 6 ? '…' : ''}
+Topics covered in class: ${selectedTopics.join('; ')}
 
 Make questions based on the CBSE/NCERT Grade 7 curriculum for these specific topics.
 Vary difficulty: ~6 easy, ~9 medium, ~5 challenging.
 Return ONLY a JSON array (no markdown, no explanation).`;
+  }
+  return `Generate 20 multiple-choice questions for Arjun, Grade 7, Shiv Nadar School.
+Subject: ${subject}
+
+Make questions based on the standard CBSE/NCERT Grade 7 curriculum.
+Vary difficulty: ~6 easy, ~9 medium, ~5 challenging.
+Return ONLY a JSON array (no markdown, no explanation).`;
+}
+
+window._onQuizTopicChange = function() {
+  const checked = [...document.querySelectorAll('.qz-topic-cb:checked')].map(cb => cb.value);
+  const subject = _quizState.subject;
+  const ta = document.getElementById('quizPromptTA');
+  if (ta) ta.value = _buildQuizPrompt(subject, checked);
+  const countEl = document.getElementById('qzTopicCount');
+  if (countEl) countEl.textContent = checked.length
+    ? `${checked.length} topic${checked.length > 1 ? 's' : ''} selected`
+    : 'No topics selected — using full curriculum';
+};
+
+function _renderQuizPromptEditor() {
+  const { subject, topics } = _quizState;
+
+  const topicsHtml = topics.length
+    ? topics.map((t, i) => `
+        <label class="qz-topic-checkbox-row">
+          <input type="checkbox" class="qz-topic-cb" value="${escHtml(t)}" checked
+            onchange="_onQuizTopicChange()">
+          <span class="qz-topic-cb-label">${escHtml(t)}</span>
+        </label>`).join('')
+    : '<span class="muted" style="font-size:0.875rem">No topics logged yet — quiz will use Grade 7 curriculum</span>';
+
+  const defaultPrompt = _buildQuizPrompt(subject, topics);
 
   _quizEl().innerHTML = `
     <div class="qz-header">
@@ -991,12 +1023,19 @@ Return ONLY a JSON array (no markdown, no explanation).`;
       <button class="qz-close" onclick="closeQuiz()">✕</button>
     </div>
     <div class="qz-body">
-      <p class="qz-label">Topics from your class notes:</p>
-      <div class="qz-topic-chips">
-        ${topics.map(t => `<span class="qz-chip">${escHtml(t)}</span>`).join('') || '<span class="muted">No topics logged yet — quiz will use Grade 7 curriculum</span>'}
+      <div class="qz-topics-header">
+        <p class="qz-label" style="margin:0">Select topics to include:</p>
+        ${topics.length ? `
+        <div class="qz-topic-actions">
+          <button class="qz-link-btn" onclick="document.querySelectorAll('.qz-topic-cb').forEach(c=>{c.checked=true}); _onQuizTopicChange()">All</button>
+          <span class="qz-sep">·</span>
+          <button class="qz-link-btn" onclick="document.querySelectorAll('.qz-topic-cb').forEach(c=>{c.checked=false}); _onQuizTopicChange()">None</button>
+        </div>` : ''}
       </div>
-      <p class="qz-label" style="margin-top:1.5rem">Prompt for Gemini (edit as needed):</p>
-      <textarea class="qz-prompt-textarea" id="quizPromptTA" rows="7">${escHtml(defaultPrompt)}</textarea>
+      <div class="qz-topic-checklist">${topicsHtml}</div>
+      <p class="qz-topic-count muted" id="qzTopicCount">${topics.length} topic${topics.length !== 1 ? 's' : ''} selected</p>
+      <p class="qz-label" style="margin-top:1rem">Prompt for Gemini (auto-updates with selection):</p>
+      <textarea class="qz-prompt-textarea" id="quizPromptTA" rows="6">${escHtml(defaultPrompt)}</textarea>
       <button class="qz-primary-btn" onclick="doGenerateQuiz()">
         ✨ Generate 20 Questions
       </button>
@@ -1006,7 +1045,9 @@ Return ONLY a JSON array (no markdown, no explanation).`;
 
 window.doGenerateQuiz = async function() {
   const prompt   = document.getElementById('quizPromptTA').value;
-  const { subject, topics } = _quizState;
+  const { subject } = _quizState;
+  // Use only the checked topics at generation time
+  const topics = [...document.querySelectorAll('.qz-topic-cb:checked')].map(cb => cb.value);
 
   _quizEl().innerHTML = `
     <div class="qz-loading">

@@ -1058,6 +1058,39 @@ input[type="month"] {
   padding: 0.25rem 0.65rem;
   border-radius: 20px;
 }
+
+/* Topic checklist in quiz setup */
+.qz-topics-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+.qz-topic-actions { display: flex; align-items: center; gap: 0.3rem; }
+.qz-link-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.8rem; color: var(--primary); padding: 0.1rem 0.3rem;
+  font-weight: 600; text-decoration: underline;
+}
+.qz-link-btn:hover { color: var(--primary-dark); }
+.qz-sep { color: var(--gray-400); font-size: 0.8rem; }
+.qz-topic-checklist {
+  display: flex; flex-direction: column; gap: 0.3rem;
+  max-height: 200px; overflow-y: auto;
+  border: 1px solid var(--gray-200); border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  background: var(--gray-50);
+}
+.qz-topic-checkbox-row {
+  display: flex; align-items: center; gap: 0.55rem;
+  cursor: pointer; padding: 0.15rem 0;
+}
+.qz-topic-checkbox-row input[type="checkbox"] {
+  width: 15px; height: 15px; cursor: pointer;
+  accent-color: var(--primary); flex-shrink: 0;
+}
+.qz-topic-cb-label {
+  font-size: 0.875rem; color: var(--gray-700); line-height: 1.3;
+}
+.qz-topic-checkbox-row:has(input:not(:checked)) .qz-topic-cb-label {
+  color: var(--gray-400); text-decoration: line-through;
+}
+.qz-topic-count { font-size: 0.8rem; margin: 0.4rem 0 0; }
 .qz-prompt-textarea {
   width: 100%;
   padding: 0.75rem;
