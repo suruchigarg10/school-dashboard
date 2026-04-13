@@ -6,7 +6,7 @@
 require('dotenv').config();
 const express = require('express');
 const path    = require('path');
-const db      = require('./db');
+const { client, init } = require('./db');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -19,29 +19,42 @@ app.use(express.static(path.join(__dirname)));
 // ─── Todos API ────────────────────────────────────────────────
 
 // GET /api/todos  → { id: { done, doneAt }, ... }
-app.get('/api/todos', (_req, res) => {
-  const rows  = db.prepare('SELECT * FROM todo_state').all();
-  const state = {};
-  rows.forEach(r => {
-    state[r.id] = { done: !!r.done, doneAt: r.done_at || null };
-  });
-  res.json(state);
+app.get('/api/todos', async (_req, res) => {
+  try {
+    const result = await client.execute('SELECT * FROM todo_state');
+    const state  = {};
+    result.rows.forEach(r => {
+      state[r.id] = { done: !!r.done, doneAt: r.done_at || null };
+    });
+    res.json(state);
+  } catch (err) {
+    console.error('GET /api/todos error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // PUT /api/todos/:id  body: { done, doneAt }
-app.put('/api/todos/:id', (req, res) => {
+app.put('/api/todos/:id', async (req, res) => {
   const { id } = req.params;
   const { done, doneAt } = req.body;
   if (typeof done !== 'boolean') return res.status(400).json({ error: 'done must be boolean' });
-  db.prepare(`
-    INSERT INTO todo_state (id, done, done_at, updated_at)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE
-    SET done = excluded.done,
-        done_at = excluded.done_at,
-        updated_at = excluded.updated_at
-  `).run(id, done ? 1 : 0, doneAt || null, new Date().toISOString());
-  res.json({ ok: true });
+  try {
+    await client.execute({
+      sql: `
+        INSERT INTO todo_state (id, done, done_at, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE
+        SET done = excluded.done,
+            done_at = excluded.done_at,
+            updated_at = excluded.updated_at
+      `,
+      args: [id, done ? 1 : 0, doneAt || null, new Date().toISOString()],
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('PUT /api/todos error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── Quiz API ─────────────────────────────────────────────────
@@ -92,20 +105,16 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
     // Normalise each question to the exact shape the frontend expects:
     //   { q, options: ["A) ...", "B) ...", "C) ...", "D) ..."], answer: "A" }
     const questions = raw.slice(0, 20).map(item => {
-      // Accept both "q" and "question" keys
       const qText = (item.q || item.question || '').trim();
 
-      // Normalise options: add "A) " prefix if missing
       const opts = (item.options || []).slice(0, 4).map((opt, i) => {
         const s = String(opt).trim();
-        // Already has a label like "A)" or "A." or "A) "
         if (/^[A-D][).]\s/i.test(s)) return s.replace(/^([A-D])[).]?\s*/i, (_, l) => `${l.toUpperCase()}) `);
         return `${LABELS[i]}) ${s}`;
       });
 
-      // Normalise answer: accept "A", "A)", "A) text", index 0, etc.
       let ans = String(item.answer || 'A').trim().toUpperCase();
-      if (ans.length > 1) ans = ans[0]; // keep just the letter
+      if (ans.length > 1) ans = ans[0];
       if (!LABELS.includes(ans)) ans = 'A';
 
       return { q: qText, options: opts, answer: ans };
@@ -119,25 +128,35 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
 });
 
 // POST /api/quiz/score  body: { subject, score, total, topics[] }
-app.post('/api/quiz/score', (req, res) => {
+app.post('/api/quiz/score', async (req, res) => {
   const { subject, score, total, topics = [] } = req.body;
   if (!subject || score == null || !total) {
     return res.status(400).json({ error: 'subject, score, total are required' });
   }
-  db.prepare(`
-    INSERT INTO quiz_scores (subject, score, total, topics, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(subject, score, total, JSON.stringify(topics), new Date().toISOString());
-  res.json({ ok: true });
+  try {
+    await client.execute({
+      sql: `INSERT INTO quiz_scores (subject, score, total, topics, created_at) VALUES (?, ?, ?, ?, ?)`,
+      args: [subject, score, total, JSON.stringify(topics), new Date().toISOString()],
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/quiz/score error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/quiz/scores?subject=Math
-app.get('/api/quiz/scores', (req, res) => {
+app.get('/api/quiz/scores', async (req, res) => {
   const { subject } = req.query;
-  const rows = subject
-    ? db.prepare('SELECT * FROM quiz_scores WHERE subject = ? ORDER BY created_at DESC LIMIT 10').all(subject)
-    : db.prepare('SELECT * FROM quiz_scores ORDER BY created_at DESC LIMIT 100').all();
-  res.json(rows);
+  try {
+    const result = subject
+      ? await client.execute({ sql: 'SELECT * FROM quiz_scores WHERE subject = ? ORDER BY created_at DESC LIMIT 10', args: [subject] })
+      : await client.execute('SELECT * FROM quiz_scores ORDER BY created_at DESC LIMIT 100');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('GET /api/quiz/scores error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── Catch-all: index.html ────────────────────────────────────
@@ -145,7 +164,13 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`🏫  Dashboard → http://localhost:${PORT}`);
-  console.log(`    Gemini  : ${process.env.GEMINI_API_KEY ? '✓ configured' : '✗ not set'}`);
+// ─── Start ────────────────────────────────────────────────────
+init().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🏫  Dashboard → http://localhost:${PORT}`);
+    console.log(`    Gemini  : ${process.env.GEMINI_API_KEY ? '✓ configured' : '✗ not set'}`);
+  });
+}).catch(err => {
+  console.error('Failed to initialise database:', err);
+  process.exit(1);
 });
