@@ -68,7 +68,6 @@ app.post('/api/quiz/generate', async (req, res) => {
   try {
     const { GoogleGenerativeAI } = require('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = customPrompt || `You are generating a quiz for Arjun, a Grade 7 student at Shiv Nadar School, Gurugram.
 Subject: ${subject}
@@ -87,8 +86,26 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
   }
 ]`;
 
-    const result = await model.generateContent(prompt);
-    const text   = result.response.text().trim();
+    // Try primary model, fall back to gemini-2.0-flash on 503 capacity errors
+    const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+    let result, lastErr;
+    for (const modelName of MODELS) {
+      try {
+        result = await genAI.getGenerativeModel({ model: modelName }).generateContent(prompt);
+        console.log(`Quiz generated with ${modelName}`);
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (e.message && e.message.includes('503')) {
+          console.warn(`${modelName} returned 503, trying fallback...`);
+          continue;
+        }
+        throw e; // non-503 error — don't retry
+      }
+    }
+    if (!result) throw lastErr;
+
+    const text = result.response.text().trim();
 
     // Parse: Gemini sometimes wraps in ```json ... ```
     const stripped = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
