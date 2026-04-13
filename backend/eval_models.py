@@ -605,8 +605,9 @@ def main():
             gemini_out = {}
             gemini_kid = "error"
 
-        # Rate limit: free tier = 15 req/min → wait 5s between calls
-        import time; time.sleep(5)
+        # Rate limit: free tier = 15 req/min, ~32k tokens/min
+        # 10s gap keeps burst rate at 6 req/min, well within token budget
+        import time; time.sleep(10)
 
         r = EmailResult(
             subject       = subject,
