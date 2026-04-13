@@ -606,13 +606,16 @@ function renderMyra() {
         </div>
         <div class="hist-section-body open" id="myra-body-${i}">
           ${day.summary ? `<div style="padding:0.75rem 1.5rem;font-size:0.875rem;color:var(--gray-600);white-space:pre-wrap">${escHtml(day.summary)}</div>` : ''}
-          ${(day.emails||[]).map(e => `
-            <div class="email-item">
+          ${(day.emails||[]).map(e => {
+            const aid = emailAnchorId(day.date, e.from, e.subject);
+            return `
+            <div class="email-item" id="${aid}">
               <div class="email-subject">${escHtml(e.subject)}</div>
               <div class="email-from">${escHtml(e.from)}</div>
               <div class="email-preview">${escHtml(e.summary)}</div>
               ${(e.actions||[]).map(a => `<div class="myra-action">🔔 ${escHtml(a)}</div>`).join('')}
-            </div>`).join('')}
+            </div>`;
+          }).join('')}
         </div>
       </div>`;
   }).join('');
@@ -751,7 +754,8 @@ function sortTodos(todos) {
   return { open, closed };
 }
 
-function renderRow(t, isDone) {
+function renderRow(t, isDone, kid) {
+  kid = kid || 'arjun';
   const state   = _todoState[t.id];
   const doneAt  = state?.doneAt
     ? new Date(state.doneAt).toLocaleDateString('en-IN', { day:'numeric', month:'short' }) : '';
@@ -785,13 +789,14 @@ function renderRow(t, isDone) {
       </td>
       <td class="todo-source-cell">
         ${anchorId
-          ? `<a href="#" class="todo-source-link" onclick="jumpToEmail('${anchorId}'); return false;">${escHtml(t.source || t.emailSubject || '—')}</a>`
+          ? `<a href="#" class="todo-source-link" onclick="jumpToEmail('${anchorId}','${kid}'); return false;">${escHtml(t.source || t.emailSubject || '—')}</a>`
           : escHtml(t.source || '—')}
       </td>
     </tr>`;
 }
 
-function buildTable(todos, tableId) {
+function buildTable(todos, tableId, kid) {
+  kid = kid || 'arjun';
   if (!todos.length) return '<p class="muted" style="padding:1rem 1.5rem">No items.</p>';
   const { open, closed } = sortTodos(todos);
   let html = `<table class="todo-table" id="${tableId}">
@@ -799,7 +804,7 @@ function buildTable(todos, tableId) {
       <th class="todo-check-cell">Done</th>
       <th>To Do</th><th>Due Date</th><th>Reference</th>
     </tr></thead><tbody>`;
-  html += open.map(t => renderRow(t, false)).join('');
+  html += open.map(t => renderRow(t, false, kid)).join('');
   if (closed.length) {
     html += `<tr class="todo-divider-row"><td colspan="4">
       <span class="todo-divider-label" onclick="toggleDoneRows(this)">
@@ -807,7 +812,7 @@ function buildTable(todos, tableId) {
       </span></td></tr>`;
     html += `<tr class="todo-done-expander" style="display:none"><td colspan="4" style="padding:0">
       <table class="todo-table" style="width:100%"><tbody>
-        ${closed.map(t => renderRow(t, true)).join('')}
+        ${closed.map(t => renderRow(t, true, kid)).join('')}
       </tbody></table></td></tr>`;
   }
   html += '</tbody></table>';
@@ -823,10 +828,20 @@ window.toggleDoneRows = function(el) {
 };
 
 // ── Deep-link: jump to email in History tab ───────────────
-window.jumpToEmail = function(anchorId) {
-  // Switch to History tab
-  const histTab = document.querySelector('#arjun-tabs .tab[data-tab="history"]');
+window.jumpToEmail = function(anchorId, kid) {
+  kid = kid || 'arjun';
+
+  // If switching kids, click the kid switcher button first
+  const kidBtn = document.querySelector(`.kid-btn[data-kid="${kid}"]`);
+  if (kidBtn && !kidBtn.classList.contains('active')) kidBtn.click();
+
+  // Switch to the correct History tab for this kid
+  const tabSelector = kid === 'myra'
+    ? '#myra-tabs .tab[data-tab="myra-history"]'
+    : '#arjun-tabs .tab[data-tab="history"]';
+  const histTab = document.querySelector(tabSelector);
   if (histTab) histTab.click();
+
   // Wait for render, then scroll and highlight
   setTimeout(() => {
     const el = document.getElementById(anchorId);
@@ -903,7 +918,7 @@ function renderTodoSection(title, allItems, visibleItems, pillsHtml, tableId, to
       </div>
       <div class="todo-section-body open">
         ${pillsHtml}
-        ${buildTable(visibleItems, tableId)}
+        ${buildTable(visibleItems, tableId, 'arjun')}
       </div>
     </div>`;
 }
@@ -938,7 +953,7 @@ function renderMyraTodosPanel() {
   const openCount = todos.filter(t => !isTodoDone(t.id)).length;
   const doneCount = todos.filter(t =>  isTodoDone(t.id)).length;
   if (meta) meta.textContent = `${openCount} open · ${doneCount} done`;
-  el.innerHTML = buildTable(todos, 'myra-todo-table');
+  el.innerHTML = buildTable(todos, 'myra-todo-table', 'myra');
 }
 
 // ══════════════════════════════════════════════════════════
