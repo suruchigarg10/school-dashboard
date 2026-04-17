@@ -24,6 +24,12 @@ jobs:
       - name: Install Python dependencies
         run: pip install pdfplumber python-dotenv
 
+      - name: Debug - confirm file state
+        run: |
+          git log --oneline -3
+          echo "--- fetch_emails.py line 305-320 ---"
+          sed -n '305,320p' backend/fetch_emails.py
+
       - name: Run email fetch
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
