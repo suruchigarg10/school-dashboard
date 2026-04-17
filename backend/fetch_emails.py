@@ -535,15 +535,16 @@ def main():
     data      = load_data()
     timetable = json.loads(TIMETABLE_FILE.read_text(encoding="utf-8"))
 
-    print("\n📧  Connecting to Gmail IMAP...")
-    mail = connect_gmail()
-    print("    Connected ✓")
-
     for offset in range(args.days):
         target = date.today() - timedelta(days=offset)
-        process_day(target, data, timetable, mail)
-
-    mail.logout()
+        print(f"\n📧  Connecting to Gmail IMAP...")
+        mail = connect_gmail()
+        print("    Connected ✓")
+        try:
+            process_day(target, data, timetable, mail)
+        finally:
+            try: mail.logout()
+            except Exception: pass
 
     data["days"].sort(key=lambda d: d["date"], reverse=True)
     data["myra"]["days"].sort(key=lambda d: d["date"], reverse=True)
