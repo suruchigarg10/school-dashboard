@@ -36,7 +36,6 @@ load_dotenv(Path(__file__).parent.parent / ".env", override=True)
 
 GMAIL_USER         = "E153.manager@gmail.com"
 GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"].replace(" ", "")
-ANTHROPIC_API_KEY  = os.environ["ANTHROPIC_API_KEY"]
 
 BASE_DIR        = Path(__file__).parent.parent
 DATA_FILE       = BASE_DIR / "data" / "dashboard-data.js"
