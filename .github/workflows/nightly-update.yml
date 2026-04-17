@@ -26,12 +26,6 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install requests pdfplumber python-dotenv
 
-      - name: Debug - confirm file state
-        run: |
-          git log --oneline -3
-          echo "--- _call_gemini function ---"
-          grep -n "_GEMINI_MODELS\|_call_gemini\|fallback" backend/fetch_emails.py | head -10
-
       - name: Run email fetch
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
