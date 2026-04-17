@@ -22,7 +22,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python dependencies
-        run: pip install google-generativeai pdfplumber python-dotenv
+        run: pip install pdfplumber python-dotenv
 
       - name: Run email fetch
         env:

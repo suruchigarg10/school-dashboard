@@ -27,9 +27,9 @@ from email.header import decode_header
 from pathlib import Path
 
 import io
+import requests
 import pdfplumber
 from dotenv import load_dotenv
-import google.generativeai as genai
 
 # ── Config ─────────────────────────────────────────────────
 load_dotenv(Path(__file__).parent.parent / ".env", override=True)
@@ -198,13 +198,22 @@ def fetch_all_emails_for_date(mail: imaplib.IMAP4_SSL, target_date: date) -> lis
     return emails
 
 
-# ── Gemini client (singleton) ───────────────────────────────
+# ── Gemini via REST API (no SDK — avoids httpx lifecycle issues) ─
+_GEMINI_API_KEY = os.environ["GEMINI_API_KEY"].strip()
+_GEMINI_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    "gemini-2.5-flash:generateContent"
+)
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"].strip())
-_gemini_model = genai.GenerativeModel("gemini-2.5-flash")
-
-def _get_client():
-    return _gemini_model
+def _call_gemini(prompt: str) -> str:
+    resp = requests.post(
+        _GEMINI_URL,
+        params={"key": _GEMINI_API_KEY},
+        json={"contents": [{"parts": [{"text": prompt}]}]},
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
 
 
 def _parse_json(text: str) -> dict:
@@ -310,8 +319,7 @@ If kid="myra":
 If kid="skip":
 {{"kid":"skip"}}"""
 
-    resp = _get_client().generate_content(prompt)
-    result = _parse_json(resp.text)
+    result = _parse_json(_call_gemini(prompt))
     kid = result.get("kid", "skip")
 
     if kid == "skip" or not kid:
@@ -373,13 +381,12 @@ def build_arjun_day_summary(processed: list[dict], subjects: list[str], target_d
             f"Today's subjects: {', '.join(subjects)}."
         )
     bullets = "\n".join(f"- {e['subject']}: {e['summary']}" for e in processed)
-    resp = _get_client().generate_content(
+    return _call_gemini(
         f"Write a 3-4 sentence daily briefing for parents about their Grade 7 child's school day.\n"
         f"Today is {day_name}, {date_str}. Subjects: {', '.join(subjects)}.\n\n"
         f"Email summaries:\n{bullets}\n\n"
         "Plain, warm, flowing sentences. No bullet points."
-    )
-    return resp.text.strip()
+    ).strip()
 
 
 def build_myra_day_summary(processed: list[dict], target_date: date) -> str:
