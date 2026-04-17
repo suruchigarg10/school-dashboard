@@ -198,10 +198,12 @@ def fetch_all_emails_for_date(mail: imaplib.IMAP4_SSL, target_date: date) -> lis
     return emails
 
 
-# ── Claude ─────────────────────────────────────────────────
+# ── Gemini client (singleton) ───────────────────────────────
+
+_gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"].strip())
 
 def _get_client():
-    return genai.Client(api_key=os.environ["GEMINI_API_KEY"].strip())
+    return _gemini_client
 
 
 def _parse_json(text: str) -> dict:
