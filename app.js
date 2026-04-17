@@ -974,40 +974,60 @@ window.openQuizFlow = function(subject, topics) {
   _renderQuizPromptEditor();
 };
 
-function _buildQuizPrompt(subject, selectedTopics) {
-  if (selectedTopics.length) {
-    return `Generate 20 multiple-choice questions for Arjun, Grade 7, Shiv Nadar School.
-Subject: ${subject}
-Topics covered in class: ${selectedTopics.join('; ')}
+function _buildQuizPrompt(subject, selectedTopics, mcqCount, shortCount) {
+  const total     = mcqCount + shortCount;
+  const topicLine = selectedTopics.length
+    ? `Topics covered in class: ${selectedTopics.join('; ')}`
+    : `Standard CBSE/NCERT Grade 7 ${subject} curriculum`;
 
-Make questions based on the CBSE/NCERT Grade 7 curriculum for these specific topics.
-Vary difficulty: ~6 easy, ~9 medium, ~5 challenging.
-Return ONLY a JSON array (no markdown, no explanation).`;
-  }
-  return `Generate 20 multiple-choice questions for Arjun, Grade 7, Shiv Nadar School.
+  return `Generate exactly ${total} questions for Arjun, Grade 7, Shiv Nadar School.
 Subject: ${subject}
+${topicLine}
 
-Make questions based on the standard CBSE/NCERT Grade 7 curriculum.
-Vary difficulty: ~6 easy, ~9 medium, ~5 challenging.
-Return ONLY a JSON array (no markdown, no explanation).`;
+Mix: ${mcqCount} multiple-choice (MCQ) questions, then ${shortCount} short-answer questions.
+Vary difficulty: roughly 30% easy, 45% medium, 25% challenging.
+
+Use EXACTLY this JSON format — return a single JSON array, no markdown fences, no extra text:
+
+For each MCQ:
+{ "type": "mcq", "q": "Question text?", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "answer": "A", "explanation": "One sentence explaining why A is correct and the others are not." }
+
+For each short-answer:
+{ "type": "short", "q": "Question text?", "answer": "Model answer in 2-3 sentences a Grade 7 student should give." }
+
+Return the ${mcqCount} MCQ questions first, then the ${shortCount} short-answer questions.`;
 }
 
-window._onQuizTopicChange = function() {
-  const checked = [...document.querySelectorAll('.qz-topic-cb:checked')].map(cb => cb.value);
-  const subject = _quizState.subject;
-  const ta = document.getElementById('quizPromptTA');
-  if (ta) ta.value = _buildQuizPrompt(subject, checked);
-  const countEl = document.getElementById('qzTopicCount');
+function _refreshQuizPrompt() {
+  const checked   = [...document.querySelectorAll('.qz-topic-cb:checked')].map(cb => cb.value);
+  const mcqCount  = parseInt(document.getElementById('qzMcqCount')?.value  || 15);
+  const shortCount= parseInt(document.getElementById('qzShortCount')?.value || 5);
+  const ta        = document.getElementById('quizPromptTA');
+  if (ta) ta.value = _buildQuizPrompt(_quizState.subject, checked, mcqCount, shortCount);
+  const countEl   = document.getElementById('qzTopicCount');
   if (countEl) countEl.textContent = checked.length
     ? `${checked.length} topic${checked.length > 1 ? 's' : ''} selected`
     : 'No topics selected — using full curriculum';
+}
+
+window._onQuizTopicChange  = _refreshQuizPrompt;
+window._onQuizSplitChange  = function() {
+  const total   = 20;
+  const mcqEl   = document.getElementById('qzMcqCount');
+  const shortEl = document.getElementById('qzShortCount');
+  let mcq       = Math.max(0, Math.min(total, parseInt(mcqEl.value) || 0));
+  mcqEl.value   = mcq;
+  shortEl.value = total - mcq;
+  _refreshQuizPrompt();
 };
 
 function _renderQuizPromptEditor() {
   const { subject, topics } = _quizState;
+  const defaultMcq   = 15;
+  const defaultShort = 5;
 
   const topicsHtml = topics.length
-    ? topics.map((t, i) => `
+    ? topics.map(t => `
         <label class="qz-topic-checkbox-row">
           <input type="checkbox" class="qz-topic-cb" value="${escHtml(t)}" checked
             onchange="_onQuizTopicChange()">
@@ -1015,7 +1035,7 @@ function _renderQuizPromptEditor() {
         </label>`).join('')
     : '<span class="muted" style="font-size:0.875rem">No topics logged yet — quiz will use Grade 7 curriculum</span>';
 
-  const defaultPrompt = _buildQuizPrompt(subject, topics);
+  const defaultPrompt = _buildQuizPrompt(subject, topics, defaultMcq, defaultShort);
 
   _quizEl().innerHTML = `
     <div class="qz-header">
@@ -1034,7 +1054,25 @@ function _renderQuizPromptEditor() {
       </div>
       <div class="qz-topic-checklist">${topicsHtml}</div>
       <p class="qz-topic-count muted" id="qzTopicCount">${topics.length} topic${topics.length !== 1 ? 's' : ''} selected</p>
-      <p class="qz-label" style="margin-top:1rem">Prompt for Gemini (auto-updates with selection):</p>
+
+      <div class="qz-split-row">
+        <p class="qz-label" style="margin:0">Question mix (total 20):</p>
+        <div class="qz-split-controls">
+          <label class="qz-split-label">
+            <span>Multiple choice</span>
+            <input type="number" id="qzMcqCount" class="qz-split-input" value="${defaultMcq}" min="0" max="20"
+              oninput="_onQuizSplitChange()">
+          </label>
+          <span class="qz-split-sep">+</span>
+          <label class="qz-split-label">
+            <span>Short answer</span>
+            <input type="number" id="qzShortCount" class="qz-split-input" value="${defaultShort}" min="0" max="20" readonly>
+          </label>
+          <span class="qz-split-total">= 20</span>
+        </div>
+      </div>
+
+      <p class="qz-label" style="margin-top:1rem">Prompt for Gemini (auto-updates):</p>
       <textarea class="qz-prompt-textarea" id="quizPromptTA" rows="6">${escHtml(defaultPrompt)}</textarea>
       <button class="qz-primary-btn" onclick="doGenerateQuiz()">
         ✨ Generate 20 Questions
@@ -1089,6 +1127,39 @@ function _renderQuizQuestion() {
   const total    = questions.length;
   const q        = questions[currentQ];
   const progress = Math.round((currentQ / total) * 100);
+  const nextLabel = currentQ + 1 < total ? 'Next →' : '🏆 See Results';
+  const typeBadge = q.type === 'short'
+    ? '<span class="qz-type-badge qz-type-short">✏️ Short Answer</span>'
+    : '<span class="qz-type-badge qz-type-mcq">🔘 Multiple Choice</span>';
+
+  const bodyHtml = q.type === 'short' ? `
+      <div class="qz-short-answer-area">
+        <textarea class="qz-short-textarea" id="qzShortInput" rows="4"
+          placeholder="Write your answer here…"></textarea>
+        <button class="qz-primary-btn" id="qzShortSubmit" onclick="submitShortAnswer()">
+          Submit Answer
+        </button>
+      </div>
+      <div id="qzModelAnswer" class="qz-model-answer" style="display:none">
+        <p class="qz-model-answer-label">📖 Model Answer:</p>
+        <p class="qz-model-answer-text">${escHtml(q.answer)}</p>
+        <p class="qz-self-mark-label">How did you do?</p>
+        <div class="qz-self-mark-btns">
+          <button class="qz-self-correct" onclick="markShortAnswer(true)">✅ Got it right</button>
+          <button class="qz-self-wrong"   onclick="markShortAnswer(false)">❌ Got it wrong</button>
+        </div>
+      </div>` : `
+      <div class="qz-options" id="qzOptions">
+        ${q.options.map(opt => `
+          <button class="qz-option-btn" data-letter="${opt[0]}"
+            onclick="selectQuizOption(this, '${opt[0]}', '${escHtml(q.answer)}', ${JSON.stringify(escHtml(q.explanation||''))})">
+            ${escHtml(opt)}
+          </button>`).join('')}
+      </div>
+      <div id="qzFeedback" class="qz-feedback" style="display:none"></div>
+      <div id="qzNext" style="display:none;margin-top:1rem;text-align:center">
+        <button class="qz-primary-btn" onclick="nextQuizQuestion()">${nextLabel}</button>
+      </div>`;
 
   _quizEl().innerHTML = `
     <div class="qz-header">
@@ -1097,42 +1168,57 @@ function _renderQuizQuestion() {
     </div>
     <div class="qz-progress-bar"><div class="qz-progress-fill" style="width:${progress}%"></div></div>
     <div class="qz-body">
+      ${typeBadge}
       <p class="qz-question-text">${escHtml(q.q)}</p>
-      <div class="qz-options" id="qzOptions">
-        ${q.options.map((opt, i) => `
-          <button class="qz-option-btn" data-letter="${opt[0]}"
-            onclick="selectQuizOption(this, '${opt[0]}', '${escHtml(q.answer)}')">
-            ${escHtml(opt)}
-          </button>`).join('')}
-      </div>
-      <div id="qzFeedback" class="qz-feedback" style="display:none"></div>
-      <div id="qzNext" style="display:none;margin-top:1rem;text-align:center">
-        <button class="qz-primary-btn" onclick="nextQuizQuestion()">
-          ${currentQ + 1 < total ? 'Next →' : '🏆 See Results'}
-        </button>
-      </div>
+      ${bodyHtml}
     </div>`;
 }
 
-window.selectQuizOption = function(btn, selected, correct) {
+window.selectQuizOption = function(btn, selected, correct, explanation) {
   const container = document.getElementById('qzOptions');
   const allBtns   = container.querySelectorAll('.qz-option-btn');
   const isCorrect = selected === correct;
 
   allBtns.forEach(b => {
     b.disabled = true;
-    if (b.dataset.letter === correct)       b.classList.add('qz-opt-correct');
-    else if (b === btn && !isCorrect)       b.classList.add('qz-opt-wrong');
+    if (b.dataset.letter === correct)  b.classList.add('qz-opt-correct');
+    else if (b === btn && !isCorrect)  b.classList.add('qz-opt-wrong');
   });
 
   _quizState.answers.push({ correct: isCorrect });
 
   const fb = document.getElementById('qzFeedback');
-  fb.innerHTML = isCorrect
-    ? '<span class="qz-fb-correct">✅ Correct!</span>'
-    : `<span class="qz-fb-wrong">❌ Wrong. Correct answer: <strong>${escHtml(correct)}</strong></span>`;
+  if (isCorrect) {
+    fb.innerHTML = '<span class="qz-fb-correct">✅ Correct!</span>'
+      + (explanation ? `<p class="qz-explanation">${explanation}</p>` : '');
+  } else {
+    fb.innerHTML = `<span class="qz-fb-wrong">❌ Wrong — correct answer: <strong>${escHtml(correct)}</strong></span>`
+      + (explanation ? `<p class="qz-explanation">${explanation}</p>` : '');
+  }
   fb.style.display = 'block';
   document.getElementById('qzNext').style.display = 'block';
+};
+
+window.submitShortAnswer = function() {
+  const input = document.getElementById('qzShortInput');
+  if (!input || !input.value.trim()) { input.focus(); return; }
+  input.disabled = true;
+  document.getElementById('qzShortSubmit').style.display = 'none';
+  document.getElementById('qzModelAnswer').style.display = 'block';
+};
+
+window.markShortAnswer = function(correct) {
+  _quizState.answers.push({ correct });
+  // Replace self-mark buttons with confirmation + next
+  const modelEl = document.getElementById('qzModelAnswer');
+  const nextLabel = _quizState.currentQ + 1 < _quizState.questions.length ? 'Next →' : '🏆 See Results';
+  modelEl.insertAdjacentHTML('beforeend', `
+    <div style="margin-top:1rem;text-align:center">
+      <span class="${correct ? 'qz-fb-correct' : 'qz-fb-wrong'}">${correct ? '✅ Marked correct' : '❌ Marked wrong'}</span>
+      <br><br>
+      <button class="qz-primary-btn" onclick="nextQuizQuestion()">${nextLabel}</button>
+    </div>`);
+  modelEl.querySelectorAll('.qz-self-mark-btns, .qz-self-mark-label').forEach(el => el.remove());
 };
 
 window.nextQuizQuestion = function() {

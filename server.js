@@ -119,11 +119,22 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
 
     const LABELS = ['A', 'B', 'C', 'D'];
 
-    // Normalise each question to the exact shape the frontend expects:
-    //   { q, options: ["A) ...", "B) ...", "C) ...", "D) ..."], answer: "A" }
+    // Normalise each question — supports two types:
+    //   MCQ:   { type:"mcq", q, options, answer, explanation }
+    //   Short: { type:"short", q, answer }
     const questions = raw.slice(0, 20).map(item => {
+      const type  = item.type === 'short' ? 'short' : 'mcq';
       const qText = (item.q || item.question || '').trim();
 
+      if (type === 'short') {
+        return {
+          type,
+          q:      qText,
+          answer: String(item.answer || item.modelAnswer || '').trim(),
+        };
+      }
+
+      // MCQ
       const opts = (item.options || []).slice(0, 4).map((opt, i) => {
         const s = String(opt).trim();
         if (/^[A-D][).]\s/i.test(s)) return s.replace(/^([A-D])[).]?\s*/i, (_, l) => `${l.toUpperCase()}) `);
@@ -134,7 +145,7 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
       if (ans.length > 1) ans = ans[0];
       if (!LABELS.includes(ans)) ans = 'A';
 
-      return { q: qText, options: opts, answer: ans };
+      return { type: 'mcq', q: qText, options: opts, answer: ans, explanation: item.explanation || '' };
     });
 
     res.json({ questions });
