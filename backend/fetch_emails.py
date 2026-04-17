@@ -421,9 +421,9 @@ def process_day(target_date: date, data: dict, timetable: dict, mail: imaplib.IM
             result = classify_and_summarise(raw, target_date, core_today)
         except Exception as e:
             print(f"   ⚠️  Skipping (Gemini error): {e}")
-            _time.sleep(10)
+            _time.sleep(30)  # longer wait after rate limit error
             continue
-        _time.sleep(5)  # stay within Gemini free tier: 15 req/min
+        _time.sleep(15)  # 15s gap = 4 req/min, well within free tier
         if result is None:
             continue
 
