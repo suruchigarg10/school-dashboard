@@ -40,5 +40,12 @@ jobs:
           git push
 
       - name: Trigger Render redeploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
-        run: curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            curl -s -X POST "$RENDER_DEPLOY_HOOK"
+            echo "Render redeploy triggered"
+          else
+            echo "No deploy hook configured, skipping"
+          fi
