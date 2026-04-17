@@ -1,0 +1,44 @@
+name: Nightly Dashboard Update
+
+on:
+  schedule:
+    # 7:30 PM IST = 14:00 UTC (IST is UTC+5:30)
+    - cron: '0 14 * * 1-6'   # Mon-Sat
+  workflow_dispatch:          # allow manual trigger from GitHub UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install google-genai pdfplumber python-dotenv
+
+      - name: Run email fetch
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GEMINI_API_KEY:     ${{ secrets.GEMINI_API_KEY }}
+        run: python3 backend/fetch_emails.py
+
+      - name: Commit and push if data changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/dashboard-data.js
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Dashboard update $(date '+%Y-%m-%d %H:%M IST')"
+          git push
+
+      - name: Trigger Render redeploy
+        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+        run: curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
