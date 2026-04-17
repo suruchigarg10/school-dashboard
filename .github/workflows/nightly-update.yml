@@ -22,7 +22,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python dependencies
-        run: pip install pdfplumber python-dotenv
+        run: pip install requests pdfplumber python-dotenv
 
       - name: Debug - confirm file state
         run: |
