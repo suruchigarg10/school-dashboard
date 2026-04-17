@@ -200,20 +200,25 @@ def fetch_all_emails_for_date(mail: imaplib.IMAP4_SSL, target_date: date) -> lis
 
 # ── Gemini via REST API (no SDK — avoids httpx lifecycle issues) ─
 _GEMINI_API_KEY = os.environ["GEMINI_API_KEY"].strip()
-_GEMINI_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.5-flash:generateContent"
-)
+_GEMINI_MODELS  = ["gemini-2.5-flash", "gemini-2.0-flash"]
 
 def _call_gemini(prompt: str) -> str:
-    resp = requests.post(
-        _GEMINI_URL,
-        params={"key": _GEMINI_API_KEY},
-        json={"contents": [{"parts": [{"text": prompt}]}]},
-        timeout=60,
-    )
-    resp.raise_for_status()
-    return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+    last_err = None
+    for model in _GEMINI_MODELS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        resp = requests.post(
+            url,
+            params={"key": _GEMINI_API_KEY},
+            json={"contents": [{"parts": [{"text": prompt}]}]},
+            timeout=60,
+        )
+        if resp.status_code == 503:
+            print(f"   ⚠️  {model} returned 503, trying fallback...")
+            last_err = resp
+            continue
+        resp.raise_for_status()
+        return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+    last_err.raise_for_status()
 
 
 def _parse_json(text: str) -> dict:
