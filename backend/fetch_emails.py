@@ -203,22 +203,26 @@ _GEMINI_API_KEY = os.environ["GEMINI_API_KEY"].strip()
 _GEMINI_MODELS  = ["gemini-2.5-flash", "gemini-2.0-flash"]
 
 def _call_gemini(prompt: str) -> str:
-    last_err = None
+    import time as _time
     for model in _GEMINI_MODELS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        resp = requests.post(
-            url,
-            params={"key": _GEMINI_API_KEY},
-            json={"contents": [{"parts": [{"text": prompt}]}]},
-            timeout=60,
-        )
-        if resp.status_code == 503:
-            print(f"   ⚠️  {model} returned 503, trying fallback...")
-            last_err = resp
-            continue
-        resp.raise_for_status()
-        return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-    last_err.raise_for_status()
+        # Retry up to 3 times with exponential backoff for rate limit errors
+        for attempt in range(3):
+            resp = requests.post(
+                url,
+                params={"key": _GEMINI_API_KEY},
+                json={"contents": [{"parts": [{"text": prompt}]}]},
+                timeout=60,
+            )
+            if resp.status_code in (429, 503):
+                wait = 30 * (2 ** attempt)  # 30s, 60s, 120s
+                print(f"   ⏳ {model} returned {resp.status_code}, waiting {wait}s (attempt {attempt+1}/3)...")
+                _time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+        print(f"   ⚠️  {model} exhausted retries, trying next model...")
+    raise Exception("All Gemini models exhausted after retries")
 
 
 def _parse_json(text: str) -> dict:
