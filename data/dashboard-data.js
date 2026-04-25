@@ -1452,7 +1452,7 @@ window.DASHBOARD_DATA = {
       "examDate": "2026-05-20",
       "subject": "Third Language",
       "examType": "PA1",
-      "topics": "German: Lektion 1 & 2, Sections A-D | Sanskrit: वर्ण-विचार, धातुरूपाणि, पाठ-1 | French: Unité 0 & 1, Grammaire | Spanish: Lección 1 – Mi rutina diaria",
+      "topics": "Spanish – Lección 1: Mi rutina diaria | Section A: Comprensión de lectura | Section B: Escritura – Paragraph writing: Rutina diaria in 60-70 words | Section C: Gramática – Los verbos reflexivos (regulares e irregulares), Las actividades, La hora, Los adverbios de frecuencia | Section D: Cultura – Ecuador (Note: Fun Facts about Ecuador will NOT come) | Refer to notebook, books, worksheets and Veracross for other resources",
       "marks": 20,
       "duration": "50 min"
     },
