@@ -1270,6 +1270,39 @@ input[type="month"] {
 .qz-breakdown-dot.wrong   { background: var(--red-light);   color: #991b1b; }
 .qz-results-actions { display: flex; flex-direction: column; gap: 0.5rem; }
 
+/* ── Info Tab ──────────────────────────────────────────────── */
+.info-links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  padding: 1rem 1.5rem 1.5rem;
+}
+.info-link-card {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.4rem; padding: 1.25rem 1rem;
+  border: 1px solid var(--gray-200); border-radius: var(--radius);
+  text-decoration: none; color: inherit;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  text-align: center;
+}
+.info-link-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(99,102,241,0.12); }
+.info-link-icon  { font-size: 2rem; }
+.info-link-label { font-size: 0.9rem; font-weight: 600; color: var(--gray-800); }
+.info-link-sub   { font-size: 0.75rem; color: var(--gray-500); }
+
+.info-table { width: 100%; border-collapse: collapse; }
+.info-table td { padding: 0.65rem 1.5rem; border-bottom: 1px solid var(--gray-100); font-size: 0.875rem; }
+.info-table tr:last-child td { border-bottom: none; }
+.info-contact-label { font-weight: 600; color: var(--gray-600); white-space: nowrap; padding-right: 1rem; }
+.info-table a { color: var(--primary); text-decoration: none; }
+.info-table a:hover { text-decoration: underline; }
+
+.info-schedule { padding: 0.5rem 1.5rem 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.info-schedule-row { display: flex; gap: 1rem; font-size: 0.875rem; }
+.info-sch-label { font-weight: 600; color: var(--gray-600); min-width: 90px; flex-shrink: 0; }
+.info-schedule a { color: var(--primary); text-decoration: none; }
+.info-schedule a:hover { text-decoration: underline; }
+
 /* RESPONSIVE */
 @media (max-width: 700px) {
   .grid-2 { grid-template-columns: 1fr; }
