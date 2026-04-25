@@ -1223,7 +1223,56 @@ window.DASHBOARD_DATA = {
     }
   ],
   "quizLog": [],
-  "examSchedule": [],
+  "examSchedule": [
+    {
+      "examDate": "2026-05-06",
+      "subject": "Social Science",
+      "examType": "PA1",
+      "topics": "Ch-2 Geography: Understanding The Weather",
+      "marks": 20,
+      "duration": "50 min"
+    },
+    {
+      "examDate": "2026-05-20",
+      "subject": "Third Language",
+      "examType": "PA1",
+      "topics": "German: Lektion 1 & 2, Sections A-D | Sanskrit: वर्ण-विचार, धातुरूपाणि, पाठ-1 | French: Unité 0 & 1, Grammaire | Spanish: Lección 1 – Mi rutina diaria",
+      "marks": 20,
+      "duration": "50 min"
+    },
+    {
+      "examDate": "2026-07-08",
+      "subject": "Science",
+      "examType": "PA1",
+      "topics": "Physics: Ch-11 Light – Reflection and Shadows | Chemistry: Elements and Atoms | Biology: Ch-10 Life Processes in Plants (10.1, 10.2, 10.2.2, 10.2.4)",
+      "marks": 20,
+      "duration": "50 min"
+    },
+    {
+      "examDate": "2026-07-29",
+      "subject": "English",
+      "examType": "PA1",
+      "topics": "Reading Comprehension · Diary Entry (General/Novel based) · Tenses (Simple, Continuous, Perfect) · Literature: Story of an Invitation",
+      "marks": 20,
+      "duration": "50 min"
+    },
+    {
+      "examDate": "2026-08-12",
+      "subject": "Mathematics",
+      "examType": "PA1",
+      "topics": "Ganit Prakash I: Ch-1 Large Numbers, Ch-2 Arithmetic Expressions, Ch-8 Fractions | Ganit Prakash II: Ch-2 Operations with Integers",
+      "marks": 20,
+      "duration": "50 min"
+    },
+    {
+      "examDate": "2026-08-19",
+      "subject": "Hindi",
+      "examType": "PA1",
+      "topics": "साहित्य: पाठ-1 माँ कह एक कहानी, पाठ-8 बिरजू महाराज | व्याकरण: वर्ण विचार, संज्ञा (भेद सहित) | रचनात्मक लेखन: चित्र वर्णन",
+      "marks": 20,
+      "duration": "50 min"
+    }
+  ],
   "holidays": [
     {
       "date": "2026-05-01",

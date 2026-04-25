@@ -346,6 +346,8 @@ async function loadQuizScoresForSubject(subject, si) {
 
 // ── Exam Schedule Tab ──────────────────────────────────────
 const EXAM_TYPE_META = {
+  'PA1':       { label: 'Periodic Assessment – Cycle 1', color: '#3b82f6', emoji: '📝' },
+  'PA2':       { label: 'Periodic Assessment – Cycle 2', color: '#8b5cf6', emoji: '📝' },
   'UT1':       { label: 'Unit Test 1',   color: '#3b82f6', emoji: '📝' },
   'UT2':       { label: 'Unit Test 2',   color: '#8b5cf6', emoji: '📝' },
   'MidTerm':   { label: 'Mid Term',      color: '#f59e0b', emoji: '📋' },
