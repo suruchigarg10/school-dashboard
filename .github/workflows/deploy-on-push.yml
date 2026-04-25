@@ -1,0 +1,20 @@
+name: Deploy to Render on Push
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render redeploy
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            curl -s -X POST "$RENDER_DEPLOY_HOOK"
+            echo "✅ Render redeploy triggered for push to main"
+          else
+            echo "⚠️  RENDER_DEPLOY_HOOK secret not set — skipping"
+          fi
