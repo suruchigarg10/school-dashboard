@@ -376,7 +376,7 @@ def _stamp_todo_ids(todos: list, date_str: str, kid: str) -> list:
     for t in todos:
         text = t.get("text", "")
         raw_id = f"{kid}-{date_str}-{text}"
-        stable_id = kid[0] + "-" + hashlib.md5(raw_id.encode()).hexdigest()[:10]
+        stable_id = kid + "-" + hashlib.md5(raw_id.encode()).hexdigest()[:10]
         result.append({**t, "id": stable_id, "done": False})
     return result
 

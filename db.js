@@ -27,6 +27,7 @@ async function init() {
   await client.execute(`
     CREATE TABLE IF NOT EXISTS quiz_scores (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      kid        TEXT NOT NULL DEFAULT 'arjun',
       subject    TEXT NOT NULL,
       score      INTEGER NOT NULL,
       total      INTEGER NOT NULL,
@@ -34,6 +35,17 @@ async function init() {
       created_at TEXT NOT NULL
     )
   `);
+
+  // Migration: rename legacy 'a-' todo IDs → 'arjun-' (one-time, safe to re-run)
+  const legacy = await client.execute("SELECT id FROM todo_state WHERE id LIKE 'a-%'");
+  for (const row of legacy.rows) {
+    const oldId = row.id;
+    const newId = 'arjun-' + oldId.slice(2);
+    await client.execute({ sql: 'INSERT OR IGNORE INTO todo_state (id,done,done_at,updated_at) SELECT ?,done,done_at,updated_at FROM todo_state WHERE id=?', args: [newId, oldId] });
+    await client.execute({ sql: 'DELETE FROM todo_state WHERE id=?', args: [oldId] });
+  }
+  if (legacy.rows.length) console.log(`🔄 Migrated ${legacy.rows.length} todo IDs from a- → arjun-`);
+
   console.log(`🗄️  DB: ${isLocal ? 'local SQLite' : 'Turso cloud'}`);
 }
 

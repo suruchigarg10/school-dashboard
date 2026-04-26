@@ -15,8 +15,16 @@ function subjectEmoji(s) { return SUBJECT_EMOJI[s] || '📚'; }
 
 // ── Kid Switcher ───────────────────────────────────────────
 const KID_CONFIG = {
-  arjun: { emoji: '🎒', subtitle: 'Arjun · Shiv Nadar · Grade 7' },
-  myra:  { emoji: '🌸', subtitle: 'Myra · Kunskapsskolan · KG' }
+  arjun:   { emoji: '🎒', subtitle: 'Arjun · Shiv Nadar · Grade 7' },
+  kalyani: { emoji: '⭐', subtitle: 'Kalyani · Shiv Nadar · Grade 7' },
+  myra:    { emoji: '🌸', subtitle: 'Myra · Kunskapsskolan · KG' },
+};
+
+// Map each kid's nav ID → content area ID
+const KID_AREAS = {
+  arjun:   { tabs: 'arjun-tabs',   content: 'arjun-content'   },
+  kalyani: { tabs: 'kalyani-tabs', content: 'kalyani-content' },
+  myra:    { tabs: 'myra-tabs',    content: 'myra-content'    },
 };
 
 document.querySelectorAll('.kid-btn').forEach(btn => {
@@ -24,12 +32,15 @@ document.querySelectorAll('.kid-btn').forEach(btn => {
     const kid = btn.dataset.kid;
     document.querySelectorAll('.kid-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById('arjun-tabs').style.display    = kid === 'arjun' ? '' : 'none';
-    document.getElementById('myra-tabs').style.display     = kid === 'myra'  ? '' : 'none';
-    document.getElementById('arjun-content').style.display = kid === 'arjun' ? '' : 'none';
-    document.getElementById('myra-content').style.display  = kid === 'myra'  ? '' : 'none';
+    // Show/hide each kid's tabs and content
+    Object.entries(KID_AREAS).forEach(([k, { tabs, content }]) => {
+      document.getElementById(tabs).style.display   = k === kid ? '' : 'none';
+      document.getElementById(content).style.display = k === kid ? '' : 'none';
+    });
     document.getElementById('kidEmoji').textContent    = KID_CONFIG[kid].emoji;
     document.getElementById('kidSubtitle').textContent = KID_CONFIG[kid].subtitle;
+    // Render Kalyani's panel when switching to her
+    if (kid === 'kalyani') renderKalyaniTodosPanel();
   });
 });
 
@@ -37,7 +48,7 @@ document.querySelectorAll('.kid-btn').forEach(btn => {
 document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => {
     const nav = btn.closest('.tabs');
-    const contentArea = nav.id === 'arjun-tabs' ? 'arjun-content' : 'myra-content';
+    const contentArea = Object.values(KID_AREAS).find(a => a.tabs === nav.id)?.content || 'arjun-content';
     nav.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
     document.getElementById(contentArea).querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
     btn.classList.add('active');
@@ -665,6 +676,7 @@ async function toggleTodo(id, checkbox) {
   _persistTodo(id, done, doneAt); // fire and forget
   renderTodosPanel();
   renderMyraTodosPanel();
+  renderKalyaniTodosPanel();
 }
 
 // ── Collect todos with enrichment ─────────────────────────
@@ -675,9 +687,16 @@ window.setTodoDateFilter = function(days) {
   renderTodosPanel();
 };
 
+// Kalyani shares Arjun's class data — remap arjun- IDs → kalyani- for independent tracking
+function remapIdForKid(id, kid) {
+  if (kid === 'kalyani' && id && id.startsWith('arjun-')) return 'kalyani-' + id.slice(6);
+  return id;
+}
+
 function collectAllTodos(kid) {
   const items = [];
-  const days  = kid === 'arjun' ? DATA.days : (DATA.myra?.days || []);
+  // Kalyani is in the same class as Arjun — use Arjun's email data, remap IDs
+  const days  = (kid === 'arjun' || kid === 'kalyani') ? DATA.days : (DATA.myra?.days || []);
 
   // Compute cutoff date
   let cutoff = '';
@@ -699,6 +718,7 @@ function collectAllTodos(kid) {
 
       (em.todoItems || []).forEach(t => items.push({
         ...t,
+        id:           remapIdForKid(t.id, kid),
         date:         day.date,
         category,
         schoolSubject: subject,
@@ -838,9 +858,12 @@ window.jumpToEmail = function(anchorId, kid) {
   if (kidBtn && !kidBtn.classList.contains('active')) kidBtn.click();
 
   // Switch to the correct History tab for this kid
+  // Kalyani shares Arjun's history (same class, same emails)
   const tabSelector = kid === 'myra'
     ? '#myra-tabs .tab[data-tab="myra-history"]'
-    : '#arjun-tabs .tab[data-tab="history"]';
+    : kid === 'kalyani'
+      ? '#kalyani-tabs .tab[data-tab="kalyani-history"]'
+      : '#arjun-tabs .tab[data-tab="history"]';
   const histTab = document.querySelector(tabSelector);
   if (histTab) histTab.click();
 
@@ -957,6 +980,71 @@ function renderMyraTodosPanel() {
   if (meta) meta.textContent = `${openCount} open · ${doneCount} done`;
   el.innerHTML = buildTable(todos, 'myra-todo-table', 'myra');
 }
+
+function renderKalyaniTodosPanel() {
+  const todos = collectAllTodos('kalyani');
+  const el    = document.getElementById('kalyaniTodoList');
+  const meta  = document.getElementById('kalyaniTodoPanelMeta');
+  if (!el) return;
+
+  if (!todos.length) {
+    el.innerHTML = `
+      <div class="waiting-school-state" style="padding:2rem">
+        <span class="waiting-icon">📬</span>
+        <p>Waiting for update from school</p>
+        <p class="muted">Action items will appear here as school emails are processed</p>
+      </div>`;
+    if (meta) meta.textContent = '';
+    return;
+  }
+
+  const hw      = todos.filter(t => t.category === 'homework');
+  const vc      = todos.filter(t => t.category === 'veracross');
+  const general = todos.filter(t => t.category === 'general');
+  const openCount = todos.filter(t => !isTodoDone(t.id)).length;
+  const doneCount = todos.filter(t =>  isTodoDone(t.id)).length;
+  if (meta) meta.textContent = `${openCount} open · ${doneCount} done`;
+
+  const subjects   = [...new Set(hw.map(t => t.schoolSubject).filter(Boolean))];
+  const subjectPills = subjects.length > 1
+    ? `<div class="todo-subject-pills">
+        <span class="subject-pill active" onclick="setKalyaniHwFilter('all', this)">All subjects</span>
+        ${subjects.map(s =>
+          `<span class="subject-pill" onclick="setKalyaniHwFilter('${s}', this)">${s}</span>`
+        ).join('')}
+       </div>` : '';
+
+  function section(title, allItems, tableId) {
+    if (!allItems.length) return '';
+    const open = allItems.filter(t => !isTodoDone(t.id)).length;
+    return `
+      <div class="todo-section">
+        <div class="todo-section-header" onclick="toggleTodoSection(this)">
+          <span class="todo-section-title">${title}</span>
+          <span class="todo-section-count">${open} open</span>
+          <span class="todo-section-toggle">▲</span>
+        </div>
+        <div class="todo-section-body open">
+          ${tableId === 'kalyani-hw-table' ? subjectPills : ''}
+          ${buildTable(allItems, tableId, 'kalyani')}
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = section('📚 Homework', hw, 'kalyani-hw-table')
+               + section('🏫 Veracross', vc, 'kalyani-vc-table')
+               + section('📋 General Actions', general, 'kalyani-gen-table');
+}
+
+window.setKalyaniHwFilter = function(subject, pill) {
+  document.querySelectorAll('#kalyaniTodoList .subject-pill').forEach(p => p.classList.remove('active'));
+  if (pill) pill.classList.add('active');
+  const todos = collectAllTodos('kalyani').filter(t => t.category === 'homework');
+  const filtered = subject === 'all' ? todos : todos.filter(t => t.schoolSubject === subject);
+  const table = document.getElementById('kalyani-hw-table');
+  if (table) table.closest('.todo-section-body').querySelector('table, p')?.replaceWith(...new DOMParser().parseFromString(buildTable(filtered, 'kalyani-hw-table', 'kalyani'), 'text/html').body.childNodes);
+  renderKalyaniTodosPanel(); // simple re-render
+};
 
 // ══════════════════════════════════════════════════════════
 // QUIZ FLOW
@@ -1280,6 +1368,97 @@ window.closeQuiz = function() {
   _quizState = null;
 };
 
+// ── Kalyani shared renders (same school data as Arjun) ────
+function renderKalyaniHistory() {
+  // Reuse Arjun's history data, render into kalyani's container
+  const el     = document.getElementById('kalyaniHistory');
+  let allDays  = [...DATA.days].sort((a,b) => b.date.localeCompare(a.date));
+  if (!allDays.length) { el.innerHTML = '<p class="muted">No history yet.</p>'; return; }
+
+  const allEntries = [];
+  allDays.forEach(day => (day.emails || []).forEach(email => allEntries.push({ date: day.date, email })));
+  const sections = {};
+  allEntries.forEach(({ date, email }) => {
+    const key = email.schoolSubject || 'General';
+    if (!sections[key]) sections[key] = [];
+    sections[key].push({ date, email });
+  });
+  const sectionOrder = ['General', ...DATA.coreSubjects];
+  const orderedKeys  = [...sectionOrder.filter(k => sections[k]), ...Object.keys(sections).filter(k => !sectionOrder.includes(k))];
+
+  el.innerHTML = orderedKeys.map((sectionKey, si) => {
+    const entries = sections[sectionKey].sort((a,b) => b.date.localeCompare(a.date));
+    const rows = entries.map(({ date, email }) => `
+      <div class="hist-section-entry email-item" id="kal-${emailAnchorId(date, email.from, email.subject)}">
+        <div class="hist-entry-date">${formatDate(date)}</div>
+        <div class="hist-entry-content">
+          <div class="email-subject">${escHtml(email.subject)}</div>
+          <div class="email-from">${escHtml(email.from)}</div>
+          <div class="email-preview">${escHtml(email.summary)}</div>
+          <div class="email-tags">${(email.tags||[]).map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')}</div>
+        </div>
+      </div>`).join('');
+    return `
+      <div class="hist-section">
+        <div class="hist-section-header" onclick="toggleHistSection('k${si}')">
+          <span class="hist-section-title">${subjectEmoji(sectionKey)} ${sectionKey}</span>
+          <span class="hist-section-count">${entries.length} update${entries.length !== 1 ? 's' : ''}</span>
+          <span class="hist-section-toggle" id="hst-toggle-k${si}">▲</span>
+        </div>
+        <div class="hist-section-body open" id="hst-body-k${si}">${rows}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderKalyaniExams() {
+  const el    = document.getElementById('kalyaniExamScheduleContainer');
+  if (!el) return;
+  // Reuse examSchedule data — clone Arjun's exam render
+  const exams = DATA.examSchedule || [];
+  if (!exams.length) { el.innerHTML = '<div class="card"><div class="card-header"><h2>📝 Exam Schedule</h2></div><p class="muted" style="padding:1rem">No exams scheduled yet.</p></div>'; return; }
+  const today = todayISO();
+  const byType = {};
+  exams.forEach(e => { const t = e.examType||'Other'; if (!byType[t]) byType[t]=[]; byType[t].push(e); });
+  const typeOrder = ['PA1','PA2','UT1','UT2','MidTerm','FinalTerm','ClassTest','Other'];
+  const orderedTypes = [...typeOrder.filter(t=>byType[t]), ...Object.keys(byType).filter(t=>!typeOrder.includes(t))];
+
+  const html = orderedTypes.map(type => {
+    const meta  = EXAM_TYPE_META[type] || EXAM_TYPE_META['Other'];
+    const items = byType[type].sort((a,b) => a.examDate.localeCompare(b.examDate));
+    const rows  = items.map(e => {
+      const daysLeft = Math.ceil((new Date(e.examDate) - new Date()) / 86400000);
+      const isPast = daysLeft < 0, isToday = e.examDate === today;
+      let cd = isToday ? '<span class="exam-countdown today-exam">Today!</span>'
+               : isPast ? '<span class="exam-countdown past-exam">Done</span>'
+               : daysLeft <= 7 ? `<span class="exam-countdown soon-exam">${daysLeft}d</span>`
+               : `<span class="exam-countdown future-exam">${daysLeft}d</span>`;
+      return `<tr class="${isPast?'exam-row-past':isToday?'exam-row-today':''}">
+        <td class="exam-date-cell">${formatDate(e.examDate)}</td>
+        <td class="exam-subject-cell"><strong>${escHtml(e.subject)}</strong></td>
+        <td class="exam-topics-cell">${escHtml(e.topics||'—')}</td>
+        <td class="exam-countdown-cell">${cd}</td></tr>`;
+    }).join('');
+    return `<div class="card" style="margin-bottom:1rem">
+      <div class="card-header exam-type-header" style="border-left:4px solid ${meta.color}">
+        <h2>${meta.emoji} ${meta.label}</h2>
+        <span class="badge-info">${items.length} exam${items.length!==1?'s':''}</span>
+      </div>
+      <div class="exam-table-wrap"><table class="exam-table">
+        <thead><tr><th>Date</th><th>Subject</th><th>Topics</th><th>Countdown</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div></div>`;
+  }).join('');
+  el.innerHTML = `<div class="card-header" style="padding:1.5rem 0 0.5rem"><h2>📝 Exam Schedule</h2></div>${html}`;
+}
+
+function renderKalyaniTimetable() {
+  const el = document.getElementById('kalyaniTimetableGrid');
+  if (!el) return;
+  // Clone Arjun's timetable HTML into Kalyani's container
+  const arjunGrid = document.getElementById('timetableGrid');
+  if (arjunGrid) el.innerHTML = arjunGrid.innerHTML;
+}
+
 // ── Init ───────────────────────────────────────────────────
 renderHeader();
 renderTodaySubjects();
@@ -1294,6 +1473,9 @@ renderMyra();
 renderExamSchedule();
 renderHolidays();
 renderFooter();
+renderKalyaniHistory();
+renderKalyaniExams();
+renderKalyaniTimetable();
 
 document.getElementById('historyMonthPicker').addEventListener('change', function() {
   renderHistory(this.value || undefined);
@@ -1302,11 +1484,13 @@ document.getElementById('historyMonthPicker').addEventListener('change', functio
 // Render todos immediately with empty state (no flicker if API call fails)
 renderTodosPanel();
 renderMyraTodosPanel();
+renderKalyaniTodosPanel();
 
 // Then load persisted state from server and re-render with correct tick marks
 loadTodoState().then(() => {
   renderTodosPanel();
   renderMyraTodosPanel();
+  renderKalyaniTodosPanel();
   renderVeracrossChecklist();
   renderVeracrossTab();
 }).catch(() => {
