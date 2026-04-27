@@ -1303,13 +1303,148 @@ input[type="month"] {
 .info-schedule a { color: var(--primary); text-decoration: none; }
 .info-schedule a:hover { text-decoration: underline; }
 
-/* RESPONSIVE */
+/* ═══════════════════════════════════════
+   RESPONSIVE — Mobile First
+   ═══════════════════════════════════════ */
+
+/* History entry: stack on very small screens */
+@media (max-width: 600px) {
+  .hist-section-entry {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 700px) {
+
+  /* ── Layout ── */
   .grid-2 { grid-template-columns: 1fr; }
-  .header-inner { flex-wrap: wrap; }
+  main { padding: 0 0.75rem 3rem; margin-top: 1rem; }
+
+  /* ── Header ── */
+  .header-inner {
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem 0.5rem;
+    gap: 0.5rem;
+  }
+  .header-title h1 { font-size: 1.1rem; }
+  .header-title .emoji { font-size: 1.6rem; }
   .header-meta { display: none; }
-  .tabs { overflow-x: auto; }
+
+  /* Kid switcher: compact on mobile */
+  .kid-switcher { gap: 0.25rem; }
+  .kid-btn {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.78rem;
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    padding: 0 0.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Cards ── */
+  .card-header { padding: 0.75rem 1rem; }
+  .card-header h2 { font-size: 0.875rem; }
+
+  /* ── Todo Table ── */
+  .todo-table { font-size: 0.82rem; }
+  .todo-text-cell { min-width: 0; word-break: break-word; }
+  /* Hide "Reference" column on mobile — too narrow */
+  .todo-table th:last-child,
+  .todo-table td:last-child { display: none; }
+  /* Hide due date header label, keep cell */
+  .todo-table th:nth-child(3) { white-space: nowrap; font-size: 0.72rem; }
+  .todo-due-cell { font-size: 0.75rem; white-space: normal; }
+  .todo-check-cell { width: 32px; padding: 0.5rem 0.4rem; }
+  .todo-text-cell { padding: 0.5rem 0.5rem 0.5rem 0; }
+
+  /* ── Timetable ── */
+  .timetable-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .timetable-grid-with-times {
+    min-width: 520px; /* force scroll rather than squish */
+  }
+  .tt-period { padding: 0.5rem 0.4rem; font-size: 0.72rem; }
+  .tt-day-header { padding: 0.5rem 0.4rem; font-size: 0.7rem; }
+  .tt-time-label { font-size: 0.65rem !important; padding-right: 0.4rem !important; }
+
+  /* ── Exam Table ── */
+  .exam-table { font-size: 0.8rem; }
+  .exam-table th, .exam-table td { padding: 0.5rem 0.6rem; }
+  /* Stack topics below subject on mobile */
+  .exam-topics-cell { font-size: 0.75rem; color: var(--gray-600); }
+  /* Hide countdown column label on very small, keep pill */
+  .exam-table th:last-child { font-size: 0; } /* hide text but keep column */
+  .exam-table th:last-child::after { content: '⏰'; font-size: 0.8rem; }
+
+  /* ── History ── */
+  .hist-section-header { padding: 0.75rem 1rem; }
+  .hist-entry-date { font-size: 0.75rem; }
+
+  /* ── Topic Log ── */
   .subject-section-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .subject-section-actions { align-self: flex-end; }
+  .topic-entries-grid { padding: 0 1rem 1rem; }
+
+  /* ── Info links grid ── */
+  .info-links-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem 1rem;
+  }
+  .info-link-card { padding: 0.75rem; }
+  .info-link-icon { font-size: 1.5rem; }
+
+  /* ── Info table ── */
+  .info-table { font-size: 0.8rem; }
+  .info-table td { padding: 0.4rem 0.5rem; }
+  .info-contact-label { font-size: 0.75rem; min-width: 80px; }
+
+  /* ── Info schedule ── */
+  .info-schedule-row { flex-direction: column; gap: 0.1rem; }
+  .info-sch-label { min-width: unset; }
+
+  /* ── Quiz modal ── */
+  .quiz-modal {
+    margin: 0.5rem;
+    max-height: 95vh;
+    border-radius: var(--radius);
+  }
   .qz-score-big { font-size: 3rem; }
+  .qz-prompt-ta { font-size: 0.78rem; }
+
+  /* ── Urgent banner ── */
+  .urgent-banner { padding: 0.75rem 1rem; font-size: 0.85rem; }
+
+  /* ── Veracross ── */
+  .vc-item { padding: 0.6rem 1rem; }
+
+  /* ── Holiday ── */
+  .holiday-row { gap: 0.6rem; }
+  .holiday-name { font-size: 0.85rem; }
+
+  /* ── Footer ── */
+  footer { font-size: 0.75rem; padding: 1rem; }
+}
+
+/* Tablet tweaks */
+@media (min-width: 701px) and (max-width: 900px) {
+  .header-inner { padding: 0.75rem 1rem; }
+  main { padding: 0 1rem 3rem; }
+  .tab { padding: 0.6rem 0.85rem; font-size: 0.82rem; }
+  .timetable-grid-with-times { min-width: 500px; }
+  .timetable-wrap { overflow-x: auto; }
 }

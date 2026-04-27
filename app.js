@@ -550,7 +550,7 @@ function renderTimetable() {
     });
   }
 
-  let html = '<div class="timetable-grid timetable-grid-with-times">';
+  let html = '<div class="timetable-wrap"><div class="timetable-grid timetable-grid-with-times">';
 
   // Time label column
   html += '<div class="tt-time-col">';
@@ -574,7 +574,7 @@ function renderTimetable() {
     html += '</div>';
   });
 
-  html += '</div>';
+  html += '</div></div>'; // close timetable-grid + timetable-wrap
   el.innerHTML = html;
 }
 
