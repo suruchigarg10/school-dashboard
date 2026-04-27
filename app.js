@@ -446,8 +446,8 @@ function renderExamSchedule() {
 }
 
 // ── Holiday Calendar Tab ───────────────────────────────────
-function renderHolidays() {
-  const el       = document.getElementById('holidayContainer');
+function renderHolidays(containerId) {
+  const el       = document.getElementById(containerId || 'holidayContainer');
   const holidays = (DATA.holidays || []).sort((a,b) => a.date.localeCompare(b.date));
   const today    = todayISO();
 
@@ -504,8 +504,8 @@ function renderHolidays() {
 }
 
 // ── Veracross Tab ──────────────────────────────────────────
-function renderVeracrossTab() {
-  const el = document.getElementById('veracrossLog');
+function renderVeracrossTab(containerId) {
+  const el = document.getElementById(containerId || 'veracrossLog');
   if (!DATA.veracrossLog.length) {
     el.innerHTML = '<p class="muted" style="padding:0 1.5rem 1rem">No Veracross notification emails detected yet.</p>';
     return;
@@ -1631,10 +1631,14 @@ renderKalyaniHistory();
 renderKalyaniTopicLog();
 renderKalyaniExams();
 renderKalyaniTimetable();
+renderHolidays('kalyaniHolidayContainer');
+renderVeracrossTab('kalyaniVeracrossLog');
 renderKynaHistory();
 renderKynaTopicLog();
 renderKynaExams();
 renderKynaTimetable();
+renderHolidays('kynaHolidayContainer');
+renderVeracrossTab('kynaVeracrossLog');
 
 document.getElementById('historyMonthPicker').addEventListener('change', function() {
   renderHistory(this.value || undefined);
