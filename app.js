@@ -264,21 +264,18 @@ window.toggleHistSection = function(i) {
   toggle.textContent = open ? '▲' : '▼';
 };
 
-// ── Topic Log Tab ──────────────────────────────────────────
-function renderTopicLog() {
-  const el       = document.getElementById('topicLog');
+// ── Topic Log Tab (generic — works for any kid sharing SNS data) ──
+function _renderTopicLogInto(containerId, pfx) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
   const subjects = DATA.coreSubjects;
-
-  // Group topics by subject
   const bySubject = {};
   (DATA.topicLog || []).forEach(t => {
     if (!bySubject[t.subject]) bySubject[t.subject] = [];
     bySubject[t.subject].push(t);
   });
 
-  const hasAnyTopics = Object.keys(bySubject).length > 0;
-
-  if (!hasAnyTopics) {
+  if (!Object.keys(bySubject).length) {
     el.innerHTML = `
       <div class="waiting-school-state">
         <span class="waiting-icon">📬</span>
@@ -291,13 +288,10 @@ function renderTopicLog() {
   el.innerHTML = subjects.map((subject, si) => {
     const topics = (bySubject[subject] || []).sort((a,b) => b.date.localeCompare(a.date));
     if (!topics.length) return '';
-
-    const topicTexts     = topics.map(t => t.topic);
-    const topicsJsonAttr = escHtml(JSON.stringify(topicTexts));
-
+    const topicsJsonAttr = escHtml(JSON.stringify(topics.map(t => t.topic)));
     return `
       <div class="subject-section">
-        <div class="subject-section-header" onclick="toggleTopicSubject(${si})">
+        <div class="subject-section-header" onclick="toggleTopicSubject('${pfx}${si}')">
           <div class="subject-section-title-row">
             <span class="subject-emoji-large">${subjectEmoji(subject)}</span>
             <h3>${subject}</h3>
@@ -307,11 +301,11 @@ function renderTopicLog() {
             <button class="quiz-generate-btn-small" onclick="event.stopPropagation(); openQuizFlow('${escHtml(subject)}', JSON.parse(this.dataset.topics))" data-topics="${topicsJsonAttr}">
               🎯 Generate Quiz
             </button>
-            <span class="topic-toggle-arrow" id="topic-toggle-${si}">▲</span>
+            <span class="topic-toggle-arrow" id="topic-toggle-${pfx}${si}">▲</span>
           </div>
         </div>
-        <div class="topic-list-body open" id="topic-list-${si}">
-          <div class="past-quiz-scores" id="quiz-scores-${si}">
+        <div class="topic-list-body open" id="topic-list-${pfx}${si}">
+          <div class="past-quiz-scores" id="quiz-scores-${pfx}${si}">
             <span class="quiz-scores-loading muted" style="font-size:0.8rem">Loading past scores…</span>
           </div>
           <div class="topic-entries-grid">
@@ -325,11 +319,14 @@ function renderTopicLog() {
       </div>`;
   }).join('');
 
-  // Load past quiz scores for each subject async
   subjects.forEach((subject, si) => {
-    if (bySubject[subject]?.length) loadQuizScoresForSubject(subject, si);
+    if (bySubject[subject]?.length) loadQuizScoresForSubject(subject, `${pfx}${si}`);
   });
 }
+
+function renderTopicLog()         { _renderTopicLogInto('topicLog',         'a');  }
+function renderKalyaniTopicLog()  { _renderTopicLogInto('kalyaniTopicLog',  'k');  }
+function renderKynaTopicLog()     { _renderTopicLogInto('kynaTopicLog',     'kn'); }
 
 window.toggleTopicSubject = function(i) {
   const body   = document.getElementById('topic-list-' + i);
@@ -1631,9 +1628,11 @@ renderExamSchedule();
 renderHolidays();
 renderFooter();
 renderKalyaniHistory();
+renderKalyaniTopicLog();
 renderKalyaniExams();
 renderKalyaniTimetable();
 renderKynaHistory();
+renderKynaTopicLog();
 renderKynaExams();
 renderKynaTimetable();
 
