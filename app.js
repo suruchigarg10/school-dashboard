@@ -888,7 +888,9 @@ window.jumpToEmail = function(anchorId, kid) {
 };
 
 // ── Sectioned todo panel ───────────────────────────────────
-let _hwSubjectFilter = 'all';
+let _hwSubjectFilter         = 'all';
+let _kalyaniHwSubjectFilter  = 'all';
+let _kynaHwSubjectFilter     = 'all';
 
 function renderTodosPanel() {
   const all     = collectAllTodos('arjun');
@@ -1011,16 +1013,19 @@ function renderKalyaniTodosPanel() {
   const doneCount = todos.filter(t =>  isTodoDone(t.id)).length;
   if (meta) meta.textContent = `${openCount} open · ${doneCount} done`;
 
-  const subjects   = [...new Set(hw.map(t => t.schoolSubject).filter(Boolean))];
+  const subjects  = [...new Set(hw.map(t => t.schoolSubject).filter(Boolean))];
+  const hwFiltered = _kalyaniHwSubjectFilter === 'all'
+    ? hw : hw.filter(t => t.schoolSubject === _kalyaniHwSubjectFilter);
+
   const subjectPills = subjects.length > 1
     ? `<div class="todo-subject-pills">
-        <span class="subject-pill active" onclick="setKalyaniHwFilter('all', this)">All subjects</span>
+        <span class="subject-pill ${_kalyaniHwSubjectFilter === 'all' ? 'active' : ''}" onclick="setKalyaniHwFilter('all')">All subjects</span>
         ${subjects.map(s =>
-          `<span class="subject-pill" onclick="setKalyaniHwFilter('${s}', this)">${s}</span>`
+          `<span class="subject-pill ${_kalyaniHwSubjectFilter === s ? 'active' : ''}" onclick="setKalyaniHwFilter('${s}')">${s}</span>`
         ).join('')}
        </div>` : '';
 
-  function section(title, allItems, tableId) {
+  function section(title, allItems, visibleItems, pills, tableId) {
     if (!allItems.length) return '';
     const open = allItems.filter(t => !isTodoDone(t.id)).length;
     return `
@@ -1031,25 +1036,20 @@ function renderKalyaniTodosPanel() {
           <span class="todo-section-toggle">▲</span>
         </div>
         <div class="todo-section-body open">
-          ${tableId === 'kalyani-hw-table' ? subjectPills : ''}
-          ${buildTable(allItems, tableId, 'kalyani')}
+          ${pills}
+          ${buildTable(visibleItems, tableId, 'kalyani')}
         </div>
       </div>`;
   }
 
-  el.innerHTML = section('📚 Homework', hw, 'kalyani-hw-table')
-               + section('🏫 Veracross', vc, 'kalyani-vc-table')
-               + section('📋 General Actions', general, 'kalyani-gen-table');
+  el.innerHTML = section('📚 Homework', hw, hwFiltered, subjectPills, 'kalyani-hw-table')
+               + section('🏫 Veracross', vc, vc, '', 'kalyani-vc-table')
+               + section('📋 General Actions', general, general, '', 'kalyani-gen-table');
 }
 
-window.setKalyaniHwFilter = function(subject, pill) {
-  document.querySelectorAll('#kalyaniTodoList .subject-pill').forEach(p => p.classList.remove('active'));
-  if (pill) pill.classList.add('active');
-  const todos = collectAllTodos('kalyani').filter(t => t.category === 'homework');
-  const filtered = subject === 'all' ? todos : todos.filter(t => t.schoolSubject === subject);
-  const table = document.getElementById('kalyani-hw-table');
-  if (table) table.closest('.todo-section-body').querySelector('table, p')?.replaceWith(...new DOMParser().parseFromString(buildTable(filtered, 'kalyani-hw-table', 'kalyani'), 'text/html').body.childNodes);
-  renderKalyaniTodosPanel(); // simple re-render
+window.setKalyaniHwFilter = function(subject) {
+  _kalyaniHwSubjectFilter = subject;
+  renderKalyaniTodosPanel();
 };
 
 // ══════════════════════════════════════════════════════════
@@ -1399,16 +1399,19 @@ function renderKynaTodosPanel() {
   const doneCount = todos.filter(t =>  isTodoDone(t.id)).length;
   if (meta) meta.textContent = `${openCount} open · ${doneCount} done`;
 
-  const subjects   = [...new Set(hw.map(t => t.schoolSubject).filter(Boolean))];
+  const subjects  = [...new Set(hw.map(t => t.schoolSubject).filter(Boolean))];
+  const hwFiltered = _kynaHwSubjectFilter === 'all'
+    ? hw : hw.filter(t => t.schoolSubject === _kynaHwSubjectFilter);
+
   const subjectPills = subjects.length > 1
     ? `<div class="todo-subject-pills">
-        <span class="subject-pill active" onclick="setKynaHwFilter('all', this)">All subjects</span>
+        <span class="subject-pill ${_kynaHwSubjectFilter === 'all' ? 'active' : ''}" onclick="setKynaHwFilter('all')">All subjects</span>
         ${subjects.map(s =>
-          `<span class="subject-pill" onclick="setKynaHwFilter('${s}', this)">${s}</span>`
+          `<span class="subject-pill ${_kynaHwSubjectFilter === s ? 'active' : ''}" onclick="setKynaHwFilter('${s}')">${s}</span>`
         ).join('')}
        </div>` : '';
 
-  function section(title, allItems, tableId) {
+  function section(title, allItems, visibleItems, pills, tableId) {
     if (!allItems.length) return '';
     const open = allItems.filter(t => !isTodoDone(t.id)).length;
     return `
@@ -1419,20 +1422,19 @@ function renderKynaTodosPanel() {
           <span class="todo-section-toggle">▲</span>
         </div>
         <div class="todo-section-body open">
-          ${tableId === 'kyna-hw-table' ? subjectPills : ''}
-          ${buildTable(allItems, tableId, 'kyna')}
+          ${pills}
+          ${buildTable(visibleItems, tableId, 'kyna')}
         </div>
       </div>`;
   }
 
-  el.innerHTML = section('📚 Homework', hw, 'kyna-hw-table')
-               + section('🏫 Veracross', vc, 'kyna-vc-table')
-               + section('📋 General Actions', general, 'kyna-gen-table');
+  el.innerHTML = section('📚 Homework', hw, hwFiltered, subjectPills, 'kyna-hw-table')
+               + section('🏫 Veracross', vc, vc, '', 'kyna-vc-table')
+               + section('📋 General Actions', general, general, '', 'kyna-gen-table');
 }
 
-window.setKynaHwFilter = function(subject, pill) {
-  document.querySelectorAll('#kynaTodoList .subject-pill').forEach(p => p.classList.remove('active'));
-  if (pill) pill.classList.add('active');
+window.setKynaHwFilter = function(subject) {
+  _kynaHwSubjectFilter = subject;
   renderKynaTodosPanel();
 };
 
