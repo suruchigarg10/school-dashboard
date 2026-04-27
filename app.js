@@ -699,8 +699,8 @@ function remapIdForKid(id, kid) {
 
 function collectAllTodos(kid) {
   const items = [];
-  // Kalyani is in the same class as Arjun — use Arjun's email data, remap IDs
-  const days  = (kid === 'arjun' || kid === 'kalyani') ? DATA.days : (DATA.myra?.days || []);
+  // Kalyani and Kyna are in the same class as Arjun — use Arjun's email data, remap IDs
+  const days  = (kid === 'arjun' || kid === 'kalyani' || kid === 'kyna') ? DATA.days : (DATA.myra?.days || []);
 
   // Compute cutoff date
   let cutoff = '';
