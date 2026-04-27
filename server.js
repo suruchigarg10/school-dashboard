@@ -59,6 +59,15 @@ app.put('/api/todos/:id', async (req, res) => {
 
 // ─── Quiz API ─────────────────────────────────────────────────
 
+// In-memory quiz cache: same subject+topics → reuse for 30 min (saves Gemini quota)
+const _quizCache = new Map(); // key → { questions, expiresAt }
+const QUIZ_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+function _quizCacheKey(subject, prompt) {
+  // Simple stable key from subject + first 120 chars of prompt
+  return subject + '|' + prompt.slice(0, 120);
+}
+
 // POST /api/quiz/generate  body: { subject, topics[], customPrompt? }
 app.post('/api/quiz/generate', async (req, res) => {
   const { subject, topics = [], customPrompt } = req.body;
@@ -86,7 +95,15 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
   }
 ]`;
 
-    // Try primary model, fall back to gemini-2.0-flash on 503 capacity errors
+    // Check cache first
+    const cacheKey = _quizCacheKey(subject, prompt);
+    const cached   = _quizCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      console.log(`✅ Quiz cache hit for "${subject}" — skipping Gemini call`);
+      return res.json({ questions: cached.questions, cached: true });
+    }
+
+    // Try primary model, fall back to gemini-2.0-flash on 503/429 errors
     const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
     let result, lastErr;
     for (const modelName of MODELS) {
@@ -96,11 +113,11 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
         break;
       } catch (e) {
         lastErr = e;
-        if (e.message && e.message.includes('503')) {
-          console.warn(`${modelName} returned 503, trying fallback...`);
+        if (e.message && (e.message.includes('503') || e.message.includes('429'))) {
+          console.warn(`${modelName} returned rate limit error, trying fallback...`);
           continue;
         }
-        throw e; // non-503 error — don't retry
+        throw e; // non-rate-limit error — don't retry
       }
     }
     if (!result) throw lastErr;
@@ -147,6 +164,9 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
 
       return { type: 'mcq', q: qText, options: opts, answer: ans, explanation: item.explanation || '' };
     });
+
+    // Store in cache for 30 min so Kalyani/Kyna get same questions without extra API calls
+    _quizCache.set(cacheKey, { questions, expiresAt: Date.now() + QUIZ_CACHE_TTL });
 
     res.json({ questions });
   } catch (err) {
