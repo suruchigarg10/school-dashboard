@@ -59,18 +59,21 @@ app.put('/api/todos/:id', async (req, res) => {
 
 // ─── Quiz API ─────────────────────────────────────────────────
 
-// In-memory quiz cache: same subject+topics → reuse for 30 min (saves Gemini quota)
+// In-memory quiz cache: same subject+topics+split → reuse for 60 min (saves Gemini quota)
+// Shared across all kids — any kid generating the same combo hits cache
 const _quizCache = new Map(); // key → { questions, expiresAt }
-const QUIZ_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const QUIZ_CACHE_TTL = 60 * 60 * 1000; // 60 minutes
 
-function _quizCacheKey(subject, prompt) {
-  // Simple stable key from subject + first 120 chars of prompt
-  return subject + '|' + prompt.slice(0, 120);
+function _quizCacheKey(subject, topics, mcqCount, shortCount) {
+  // Stable key: subject + sorted topics + question split
+  // Sorting topics means order doesn't matter — same combo always hits same cache entry
+  const sortedTopics = [...topics].sort().join('||');
+  return `${subject}|${mcqCount}mcq|${shortCount}short|${sortedTopics}`;
 }
 
-// POST /api/quiz/generate  body: { subject, topics[], customPrompt? }
+// POST /api/quiz/generate  body: { subject, topics[], mcqCount?, shortCount?, customPrompt? }
 app.post('/api/quiz/generate', async (req, res) => {
-  const { subject, topics = [], customPrompt } = req.body;
+  const { subject, topics = [], mcqCount = 15, shortCount = 5, customPrompt } = req.body;
   if (!process.env.GEMINI_API_KEY) {
     return res.status(503).json({ error: 'GEMINI_API_KEY not set on server. Add it to .env and restart.' });
   }
@@ -95,8 +98,8 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
   }
 ]`;
 
-    // Check cache first
-    const cacheKey = _quizCacheKey(subject, prompt);
+    // Check cache first — keyed on subject + sorted topics + split (kid-agnostic)
+    const cacheKey = _quizCacheKey(subject, topics, mcqCount, shortCount);
     const cached   = _quizCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       console.log(`✅ Quiz cache hit for "${subject}" — skipping Gemini call`);

@@ -1073,7 +1073,7 @@ function _buildQuizPrompt(subject, selectedTopics, mcqCount, shortCount) {
     ? `Topics covered in class: ${selectedTopics.join('; ')}`
     : `Standard CBSE/NCERT Grade 7 ${subject} curriculum`;
 
-  return `Generate exactly ${total} questions for Arjun, Grade 7, Shiv Nadar School.
+  return `Generate exactly ${total} questions for a Grade 7 student at Shiv Nadar School, Gurugram.
 Subject: ${subject}
 ${topicLine}
 
@@ -1188,10 +1188,12 @@ window.doGenerateQuiz = async function() {
     </div>`;
 
   try {
+    const mcqCount   = parseInt(document.getElementById('qzMcqCount')?.value   || 15);
+    const shortCount = parseInt(document.getElementById('qzShortCount')?.value || 5);
     const res = await fetch('/api/quiz/generate', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ subject, topics, customPrompt: prompt }),
+      body:    JSON.stringify({ subject, topics, mcqCount, shortCount, customPrompt: prompt }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
