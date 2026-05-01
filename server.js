@@ -106,10 +106,12 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
       return res.json({ questions: cached.questions, cached: true });
     }
 
-    // Try primary model, fall back to gemini-2.0-flash on 503/429 errors
-    const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+    // Try models in order; on transient 429/503 wait briefly then try next model
+    const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
     let result, lastErr;
-    for (const modelName of MODELS) {
+    for (let i = 0; i < MODELS.length; i++) {
+      const modelName = MODELS[i];
       try {
         result = await genAI.getGenerativeModel({ model: modelName }).generateContent(prompt);
         console.log(`Quiz generated with ${modelName}`);
@@ -117,13 +119,22 @@ Return ONLY a valid JSON array (no markdown code fences, no explanation, just ra
       } catch (e) {
         lastErr = e;
         if (e.message && (e.message.includes('503') || e.message.includes('429'))) {
-          console.warn(`${modelName} returned rate limit error, trying fallback...`);
+          const isLast = i === MODELS.length - 1;
+          console.warn(`${modelName} rate-limited (429/503)${isLast ? ' — all models exhausted' : ', trying next model...'}`);
+          if (!isLast) await sleep(2000); // brief pause before next model
           continue;
         }
         throw e; // non-rate-limit error — don't retry
       }
     }
-    if (!result) throw lastErr;
+    if (!result) {
+      // Surface a friendly message so the UI can show something useful
+      const friendly = 'Quiz generation quota exceeded on all Gemini models. ' +
+        'The free-tier daily limit has been reached — please try again tomorrow, ' +
+        'or enable Gemini API billing at https://ai.dev/rate-limit to remove this limit.';
+      console.error(friendly);
+      throw new Error(friendly);
+    }
 
     const text = result.response.text().trim();
 
