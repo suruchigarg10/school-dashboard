@@ -200,7 +200,7 @@ def fetch_all_emails_for_date(mail: imaplib.IMAP4_SSL, target_date: date) -> lis
 
 # ── Gemini via REST API (no SDK — avoids httpx lifecycle issues) ─
 _GEMINI_API_KEY = os.environ["GEMINI_API_KEY"].strip()
-_GEMINI_MODELS  = ["gemini-2.5-flash", "gemini-2.0-flash"]
+_GEMINI_MODELS  = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
 
 def _call_gemini(prompt: str) -> str:
     import time as _time
