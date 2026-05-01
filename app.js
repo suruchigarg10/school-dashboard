@@ -1247,7 +1247,7 @@ function _renderQuizQuestion() {
       <div class="qz-options" id="qzOptions">
         ${q.options.map(opt => `
           <button class="qz-option-btn" data-letter="${opt[0]}"
-            onclick="selectQuizOption(this, '${opt[0]}', '${escHtml(q.answer)}', ${JSON.stringify(escHtml(q.explanation||''))})">
+            onclick="selectQuizOption(this, '${opt[0]}', '${escHtml(q.answer)}', '${escHtml(q.explanation||'')}')">
             ${escHtml(opt)}
           </button>`).join('')}
       </div>
