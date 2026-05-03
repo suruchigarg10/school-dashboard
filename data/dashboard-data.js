@@ -2675,5 +2675,173 @@ window.DASHBOARD_DATA = {
         }
       ]
     }
-  ]
+  ],
+  "conceptualTouchpoints": {
+    "English": {
+      "April": [
+        "Story of an Invitation (Prose)",
+        "Diary Entry (Writing)",
+        "Tenses: Simple, Continuous, Perfect (Grammar)"
+      ],
+      "May": [
+        "The Machine Stops (Prose)",
+        "Daffodils (Poetry)",
+        "Tenses (Grammar)",
+        "Novel"
+      ],
+      "July": [
+        "Home and Love (Poetry)",
+        "Persuasive Writing",
+        "Reported Speech: Assertive, Interrogative, Exclamatory (Grammar)",
+        "Novel"
+      ],
+      "August": [
+        "Reported Speech",
+        "Novel",
+        "Revision"
+      ]
+    },
+    "Hindi": {
+      "April": [
+        "पाठ-1: माँ, कह एक कहानी (Lesson 1 - Maa Kaho Ek Kahani)",
+        "वर्ण विचार (Letter and Sound Analysis - Grammar)",
+        "चित्र वर्णन (Picture Description - Creative Writing)"
+      ],
+      "May": [
+        "पाठ-8: बिरजू महाराज का साक्षात्कार (Lesson 8 - Birju Maharaj Interview)",
+        "संज्ञा - भेद सहित (Noun with types - Grammar)",
+        "संवाद लेखन (Dialogue Writing - Creative Writing)"
+      ],
+      "July": [
+        "पाठ-7: वर्षा बहार (Lesson 7 - Varsha Bahar)",
+        "पाठ-5: नहीं होना बीमार (Lesson 5 - Nahin Hona Bimar)",
+        "सर्वनाम - भेद सहित (Pronoun with types - Grammar)",
+        "अनुच्छेद लेखन (Paragraph Writing - Creative Writing)"
+      ],
+      "August": [
+        "पाठ-10: मीरा के पद (Lesson 10 - Meera ke Pad)",
+        "विशेषण - भेद सहित (Adjective with types - Grammar)",
+        "अपठित गद्यांश (Unseen Passage)"
+      ]
+    },
+    "Social Science": {
+      "April": [
+        "Ch-2 (Geography): Understanding the Weather"
+      ],
+      "May": [
+        "Ch-10 (Civics): The Constitution of India - An Introduction",
+        "Ch-4 (History): New Beginnings: Cities and States"
+      ],
+      "July": [
+        "Ch-3 (Geography): Climates of India"
+      ],
+      "August": [
+        "Ch-5 (History): Rise of Empires"
+      ]
+    },
+    "Math": {
+      "April": [
+        "Ch 1: Large Numbers",
+        "Ch 2: Arithmetic Expressions",
+        "Ch 2 (Part 2): Operations on Integers"
+      ],
+      "May": [
+        "Ch 8: Working with Fractions",
+        "Ch 3: A Peek Beyond the Point (Decimals)",
+        "Ch 6: Number Play"
+      ],
+      "July": [
+        "Ch 4 (Part 2): Another Peek Beyond the Point",
+        "Ch 3: Finding Common Ground"
+      ],
+      "August": [
+        "Ch 5: Parallel and Interesting Lines"
+      ]
+    },
+    "Physics": {
+      "April": [
+        "Ch 11: Light - Shadows and Reflections"
+      ],
+      "May": [
+        "Ch 11: Light - Shadows and Reflections (continued)"
+      ],
+      "July": [
+        "Ch 8: Motion and Time"
+      ],
+      "August": [
+        "Ch 8: Motion and Time (continued)"
+      ]
+    },
+    "Chemistry": {
+      "April": [
+        "Elements and Atoms"
+      ],
+      "May": [
+        "Elements and Atoms (continued)"
+      ],
+      "July": [
+        "Ch-4: Metals and Non-metals"
+      ],
+      "August": [
+        "Ch-4: Metals and Non-metals (continued)",
+        "Revision"
+      ]
+    },
+    "Biology": {
+      "April": [
+        "Introduction to Nutrition",
+        "Introduction to Photosynthesis",
+        "Role of Chlorophyll",
+        "Test for Chlorophyll and Starch (Lab Activity)",
+        "Role of CO2 in Photosynthesis",
+        "Factors needed for Plant Growth"
+      ],
+      "May": [
+        "Production of O2 and its Test",
+        "Role of Xylem and Phloem",
+        "Respiration in Plants"
+      ],
+      "July": [
+        "Introduction to Life Processes in Animals",
+        "Digestion in Humans"
+      ],
+      "August": [
+        "Rumination in Cattle",
+        "Digestion in Amoeba",
+        "Respiration: Breathing and Gas Exchange"
+      ]
+    },
+    "Spanish": {
+      "April": [
+        "Ch 1: Mi Rutina Diaria - Reflexive Verbs (regular and irregular)",
+        "Ch 1: Activities and Daily Routine",
+        "Ch 1: Telling Time (la hora)",
+        "Ch 1: Frequency Adverbs",
+        "Ch 1: Daily Routine Paragraph Writing",
+        "Cultura: Ecuador"
+      ],
+      "May": [
+        "Ch 2: El Tiempo Libre - Leisure Verbs",
+        "Ch 2: Sports (los deportes)",
+        "Ch 2: Gustar e Encantar",
+        "Ch 2: Interrogatives (los interrogativos)",
+        "Cultura: Colombia"
+      ],
+      "July": [
+        "Ch 3: La Naturaleza",
+        "Ch 3: Weather Expressions (Hace and Estar + tiempo)",
+        "Ch 3: Numbers IV (1000 to 1 million)",
+        "Ch 3: Present Continuous (Estar + gerundio)",
+        "Cultura: Chile"
+      ],
+      "August": [
+        "Ch 4: El Extraterrestre - Solar System",
+        "Ch 4: Ser vs Estar",
+        "Ch 4: Common Adjectives with Ser and Estar",
+        "Ch 4: Prepositions-I",
+        "Cultura: Venezuela",
+        "Photo Description"
+      ]
+    }
+  }
 };

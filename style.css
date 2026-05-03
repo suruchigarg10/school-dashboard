@@ -1448,3 +1448,59 @@ input[type="month"] {
   .timetable-grid-with-times { min-width: 500px; }
   .timetable-wrap { overflow-x: auto; }
 }
+
+/* ── Curriculum Touchpoints (topic log redesign) ── */
+.tp-entries { padding: 0 1.5rem 1rem; }
+
+.tp-month-header {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--primary);
+  padding: 0.75rem 0 0.3rem;
+  margin-top: 0.25rem;
+  border-bottom: 1px solid var(--gray-200);
+}
+.tp-extra-header { color: var(--gray-400); }
+
+.tp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.tp-row:last-child { border-bottom: none; }
+
+.tp-tick { flex-shrink: 0; width: 1.5rem; text-align: center; font-size: 0.9rem; }
+.tp-circle { color: var(--gray-400); }
+
+.tp-text { flex: 1; }
+.tp-text-pending { color: var(--gray-400); }
+
+.tp-covered-date {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green);
+  white-space: nowrap;
+  padding-left: 0.5rem;
+}
+
+.tp-progress-bar-mini {
+  height: 3px;
+  background: var(--gray-200);
+  border-radius: 2px;
+  margin: 0.3rem 0 0.1rem;
+  overflow: hidden;
+}
+.tp-progress-fill-mini {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--green));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}

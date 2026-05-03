@@ -268,14 +268,51 @@ window.toggleHistSection = function(i) {
 function _renderTopicLogInto(containerId, pfx) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  const subjects = DATA.coreSubjects;
-  const bySubject = {};
-  (DATA.topicLog || []).forEach(t => {
-    if (!bySubject[t.subject]) bySubject[t.subject] = [];
-    bySubject[t.subject].push(t);
+
+  const touchpoints = DATA.conceptualTouchpoints || {};
+  const topicLog    = DATA.topicLog || [];
+  const TP_ORDER    = ['English','Hindi','Social Science','Math','Physics','Chemistry','Biology','Spanish'];
+  const MONTHS      = ['April','May','July','August'];
+
+  // Normalise subject names from topicLog → touchpoint keys
+  function normSubject(s) {
+    if (!s) return null;
+    const l = s.toLowerCase();
+    if (l.includes('social science')) return 'Social Science';
+    if (l === 'mathematics')          return 'Math';
+    if (l === 'math')                 return 'Math';
+    if (l === 'science')              return null; // ambiguous bundle — skip
+    return s; // English, Hindi, Biology, Chemistry, Physics, Spanish already match
+  }
+
+  // Fuzzy word-overlap: returns true if logged topic and touchpoint share enough key words
+  function topicMatches(logged, touchpoint) {
+    const stop = new Set(['and','the','for','with','from','that','this','are','was','has','its',
+                          'part','continued','introduction','review','into','also','been','have',
+                          'will','regular','irregular','types','writing','creative']);
+    const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g,' ').split(/\s+/)
+                       .filter(w => w.length > 2 && !stop.has(w));
+    const lw = norm(logged);
+    const tw = norm(touchpoint);
+    if (!lw.length || !tw.length) return false;
+    const twSet = new Set(tw);
+    const hits  = lw.filter(w => twSet.has(w) || tw.some(t => t.includes(w) || w.includes(t)));
+    return hits.length / Math.min(lw.length, tw.length) >= 0.35;
+  }
+
+  // Group topicLog by normalised subject
+  const logBySubject = {};
+  topicLog.forEach(t => {
+    const ns = normSubject(t.subject);
+    if (!ns) return;
+    if (!logBySubject[ns]) logBySubject[ns] = [];
+    logBySubject[ns].push(t);
   });
 
-  if (!Object.keys(bySubject).length) {
+  // Only render subjects that appear in touchpoints
+  const subjects = TP_ORDER.filter(s => touchpoints[s]);
+
+  if (!subjects.length) {
     el.innerHTML = `
       <div class="waiting-school-state">
         <span class="waiting-icon">📬</span>
@@ -286,16 +323,76 @@ function _renderTopicLogInto(containerId, pfx) {
   }
 
   el.innerHTML = subjects.map((subject, si) => {
-    const topics = (bySubject[subject] || []).sort((a,b) => b.date.localeCompare(a.date));
-    if (!topics.length) return '';
-    const topicsJsonAttr = escHtml(JSON.stringify(topics.map(t => t.topic)));
+    const monthMap   = touchpoints[subject] || {};
+    const logEntries = logBySubject[subject] || [];
+
+    // For every touchpoint find the best matching log entry
+    const matchedLogIdx = new Set();
+    const tpRows = MONTHS.flatMap(month =>
+      (monthMap[month] || []).map(tp => {
+        const idx   = logEntries.findIndex((l, i) => !matchedLogIdx.has(i) && topicMatches(l.topic, tp));
+        const match = idx >= 0 ? logEntries[idx] : null;
+        if (idx >= 0) matchedLogIdx.add(idx);
+        return { month, tp, match };
+      })
+    );
+
+    // Log entries with no touchpoint match — shown as extra covered items
+    const extras = logEntries.filter((_, i) => !matchedLogIdx.has(i));
+
+    const coveredCount = tpRows.filter(r => r.match).length;
+    const totalCount   = tpRows.length;
+    const progressPct  = totalCount ? Math.round(coveredCount / totalCount * 100) : 0;
+
+    // Topics to pass to quiz generator: covered touchpoint texts + extras
+    const quizTopics     = [...tpRows.filter(r => r.match).map(r => r.tp), ...extras.map(e => e.topic)];
+    const topicsJsonAttr = escHtml(JSON.stringify(quizTopics));
+
+    // Build month-grouped rows
+    let lastMonth = null;
+    const rowsHtml = tpRows.map(({ month, tp, match }) => {
+      let header = '';
+      if (month !== lastMonth) {
+        header    = `<div class="tp-month-header">${month}</div>`;
+        lastMonth = month;
+      }
+      if (match) {
+        const d = new Date(match.date + 'T00:00:00').toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+        return header + `
+          <div class="tp-row tp-covered">
+            <span class="tp-tick">✅</span>
+            <span class="tp-text">${escHtml(tp)}</span>
+            <span class="tp-covered-date">covered ${d}</span>
+          </div>`;
+      }
+      return header + `
+        <div class="tp-row tp-pending">
+          <span class="tp-tick tp-circle">○</span>
+          <span class="tp-text tp-text-pending">${escHtml(tp)}</span>
+        </div>`;
+    }).join('');
+
+    const extrasHtml = extras.length ? `
+      <div class="tp-month-header tp-extra-header">Additional logged topics</div>
+      ${extras.map(u => {
+        const d = new Date(u.date + 'T00:00:00').toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+        return `<div class="tp-row tp-covered tp-extra">
+          <span class="tp-tick">✅</span>
+          <span class="tp-text">${escHtml(u.topic)}</span>
+          <span class="tp-covered-date">covered ${d}</span>
+        </div>`;
+      }).join('')}` : '';
+
     return `
       <div class="subject-section">
         <div class="subject-section-header" onclick="toggleTopicSubject('${pfx}${si}')">
           <div class="subject-section-title-row">
             <span class="subject-emoji-large">${subjectEmoji(subject)}</span>
             <h3>${subject}</h3>
-            <span class="topic-count-badge">${topics.length} topic${topics.length !== 1 ? 's' : ''}</span>
+            <span class="topic-count-badge">${coveredCount}/${totalCount} covered</span>
+          </div>
+          <div class="tp-progress-bar-mini">
+            <div class="tp-progress-fill-mini" style="width:${progressPct}%"></div>
           </div>
           <div class="subject-section-actions">
             <button class="quiz-generate-btn-small" onclick="event.stopPropagation(); openQuizFlow('${escHtml(subject)}', JSON.parse(this.dataset.topics))" data-topics="${topicsJsonAttr}">
@@ -308,19 +405,13 @@ function _renderTopicLogInto(containerId, pfx) {
           <div class="past-quiz-scores" id="quiz-scores-${pfx}${si}">
             <span class="quiz-scores-loading muted" style="font-size:0.8rem">Loading past scores…</span>
           </div>
-          <div class="topic-entries-grid">
-            ${topics.map(t => `
-              <div class="topic-entry-row">
-                <span class="topic-entry-date">${t.date}</span>
-                <span class="topic-entry-text">${escHtml(t.topic)}</span>
-              </div>`).join('')}
-          </div>
+          <div class="tp-entries">${rowsHtml}${extrasHtml}</div>
         </div>
       </div>`;
   }).join('');
 
   subjects.forEach((subject, si) => {
-    if (bySubject[subject]?.length) loadQuizScoresForSubject(subject, `${pfx}${si}`);
+    loadQuizScoresForSubject(subject, `${pfx}${si}`);
   });
 }
 
