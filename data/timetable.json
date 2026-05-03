@@ -16,11 +16,11 @@
     {"time": "14:50–15:00",  "label": "Dispersal", "fixed": true}
   ],
   "timetable": {
-    "Monday":    ["Circle Time",  "Social Science", "Physics",        "AHA Sports", "Chemistry", "Math",    "IT"],
-    "Tuesday":   ["Chemistry",    "Social Science", "Hindi",          "Math",       "AHA Arts",  "Spanish", "English"],
-    "Wednesday": ["Test Period",  "Math",           "Library",        "Assembly",   "English",   "IT",      "Hindi"],
-    "Thursday":  ["Spanish",      "Social Science", "Math",           "STEAM",      "Biology",   "English", "Hindi"],
-    "Friday":    ["AHA Arts",     "English",        "Social Science", "Physics",    "PE",        "Biology", "Clubs"]
+    "Monday":    ["Hindi",     "Social Science", "Physics",  "AHA Sports", "Math",      "English",      "IT"],
+    "Tuesday":   ["Social Science", "Chemistry", "Biology",  "Math",       "AHA Arts",  "Spanish",      "English"],
+    "Wednesday": ["Test Period",    "Math",      "Physics",  "Assembly",   "English",   "IT",           "Hindi"],
+    "Thursday":  ["Biology",   "Library",        "Spanish",  "STEAM",      "PE",        "Social Science","Hindi"],
+    "Friday":    ["AHA Arts",  "English",        "Math",     "Social Science", "Chemistry", "Circle Time", "Clubs"]
   },
   "coreSubjects": ["Math", "English", "Hindi", "Social Science", "Physics", "Chemistry", "Biology", "IT", "Spanish"],
   "activityPeriods": ["Circle Time", "AHA Sports", "AHA Arts", "PE", "Library", "Assembly", "STEAM", "Clubs", "Test Period"]

@@ -58,19 +58,19 @@ window.DASHBOARD_DATA = {
   ],
   "timetable": {
     "Monday": [
-      "Biology",
+      "Hindi",
       "Social Science",
       "Physics",
       "AHA Sports",
-      "IT",
-      "Chemistry",
-      "Hindi"
+      "Math",
+      "English",
+      "IT"
     ],
     "Tuesday": [
       "Social Science",
-      "Math",
-      "Circle Time",
       "Chemistry",
+      "Biology",
+      "Math",
       "AHA Arts",
       "III Language",
       "English"
@@ -78,28 +78,28 @@ window.DASHBOARD_DATA = {
     "Wednesday": [
       "Test",
       "Math",
-      "Library",
+      "Physics",
       "Assembly",
       "English",
       "IT",
       "Hindi"
     ],
     "Thursday": [
-      "III Language",
-      "Social Science",
-      "Math",
-      "STEAM",
       "Biology",
-      "English",
+      "Library",
+      "III Language",
+      "STEAM",
+      "PE",
+      "Social Science",
       "Hindi"
     ],
     "Friday": [
       "IH / AHA Arts",
       "English",
-      "Physics",
-      "Social Science",
-      "PE",
       "Math",
+      "Social Science",
+      "Chemistry",
+      "Circle Time",
       "Clubs"
     ]
   },
