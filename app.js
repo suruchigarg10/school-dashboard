@@ -781,7 +781,9 @@ window.setTodoDateFilter = function(days) {
 
 // Kalyani shares Arjun's class data — remap arjun- IDs → kalyani- for independent tracking
 function remapIdForKid(id, kid) {
-  if (kid === 'kalyani' && id && id.startsWith('arjun-')) return 'kalyani-' + id.slice(6);
+  if (!id) return id;
+  if (kid === 'kalyani' && id.startsWith('arjun-')) return 'kalyani-' + id.slice(6);
+  if (kid === 'kyna'    && id.startsWith('arjun-')) return 'kyna-'    + id.slice(6);
   return id;
 }
 
