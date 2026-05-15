@@ -537,7 +537,8 @@ function renderExamSchedule() {
 }
 
 // ── Badminton Calendar Tab ────────────────────────────────
-let _bmtFilter = 'all';
+let _bmtFilter    = 'all';
+let _bmtAgeFilter = 'all';
 
 function renderBadmintonCalendar() {
   const el = document.getElementById('badmintonCalendar');
@@ -570,20 +571,35 @@ function renderBadmintonCalendar() {
     return `<span class="bmt-badge bmt-future">In ${days}d</span>`;
   };
 
-  // Filter pills — only show types that actually exist in data
+  // Age group ordering
+  const AGE_ORDER = ['U-13', 'U-15 & U-17', 'U-19', 'Senior', 'U-11', 'Open', 'All age categories'];
+  const existingAges = ['all', ...AGE_ORDER.filter(a => allTournaments.some(t => t.ageGroup === a))];
+
+  // Type filter pills
   const existingTypes = ['all', ...Object.keys(TYPE_META).filter(k => allTournaments.some(t => t.type === k))];
-  const filterPills = existingTypes.map(k => {
+  const typePills = existingTypes.map(k => {
     const isAll  = k === 'all';
     const active = _bmtFilter === k;
     const meta   = isAll ? null : TYPE_META[k];
-    const label  = isAll ? 'All' : meta.label;
+    const label  = isAll ? 'All types' : meta.label;
     const style  = active && !isAll ? `style="background:${meta.color};color:#fff;border-color:${meta.color}"` : '';
     return `<button class="bmt-filter-pill ${active ? 'bmt-filter-active' : ''}" ${style}
       onclick="setBmtFilter('${k}')">${label}</button>`;
   }).join('');
 
-  // Apply filter
-  const tournaments = _bmtFilter === 'all' ? allTournaments : allTournaments.filter(t => t.type === _bmtFilter);
+  // Age filter pills
+  const agePills = existingAges.map(a => {
+    const active = _bmtAgeFilter === a;
+    const label  = a === 'all' ? 'All ages' : a;
+    return `<button class="bmt-filter-pill bmt-age-pill ${active ? 'bmt-filter-active' : ''}"
+      onclick="setBmtAgeFilter('${a}')">${label}</button>`;
+  }).join('');
+
+  // Apply both filters
+  const tournaments = allTournaments.filter(t =>
+    (_bmtFilter    === 'all' || t.type     === _bmtFilter) &&
+    (_bmtAgeFilter === 'all' || t.ageGroup === _bmtAgeFilter)
+  );
 
   // Group by month
   const byMonth = {};
@@ -611,7 +627,8 @@ function renderBadmintonCalendar() {
         <h2>🏸 BAI Ranking Calendar 2026-27</h2>
         <span class="badge-info">${upcoming} upcoming · ${passed} done</span>
       </div>
-      <div class="bmt-filters">${filterPills}</div>
+      <div class="bmt-filters">${typePills}</div>
+      <div class="bmt-filters bmt-age-filters">${agePills}</div>
     </div>
     ${noResults}
     ${Object.keys(byMonth).map(mk => `
@@ -641,6 +658,10 @@ function renderBadmintonCalendar() {
 
 window.setBmtFilter = function(type) {
   _bmtFilter = type;
+  renderBadmintonCalendar();
+};
+window.setBmtAgeFilter = function(age) {
+  _bmtAgeFilter = age;
   renderBadmintonCalendar();
 };
 

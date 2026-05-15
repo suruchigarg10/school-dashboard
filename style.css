@@ -1463,6 +1463,7 @@ input[type="month"] {
 }
 .bmt-filter-pill:hover { border-color: var(--gray-400); color: var(--text); }
 .bmt-filter-active { background: var(--gray-200); color: var(--text); border-color: var(--gray-300); }
+.bmt-age-filters { padding-top: 0; border-top: 1px solid var(--gray-100); margin-top: 0.25rem; padding-top: 0.5rem; }
 .bmt-month-card { margin-bottom: 1.25rem; padding: 0; overflow: hidden; }
 .bmt-month-header {
   font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
