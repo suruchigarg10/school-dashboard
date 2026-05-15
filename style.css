@@ -1449,6 +1449,58 @@ input[type="month"] {
   .timetable-wrap { overflow-x: auto; }
 }
 
+/* ── Badminton Calendar ── */
+.bmt-legend {
+  display: flex; flex-wrap: wrap; gap: 0.75rem;
+  padding: 0.5rem 0 0.25rem;
+}
+.bmt-legend-item {
+  display: flex; align-items: center; gap: 0.35rem;
+  font-size: 0.78rem; color: var(--gray-600);
+}
+.bmt-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.bmt-month-card { margin-bottom: 1.25rem; padding: 0; overflow: hidden; }
+.bmt-month-header {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--primary);
+  padding: 0.65rem 1.25rem;
+  background: var(--primary-light);
+  border-bottom: 1px solid var(--gray-200);
+}
+.bmt-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.75rem; padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--gray-100);
+  transition: background 0.15s;
+}
+.bmt-row:last-child { border-bottom: none; }
+.bmt-row:hover { background: var(--gray-50); }
+.bmt-row-past { opacity: 0.45; }
+.bmt-row-left { display: flex; align-items: flex-start; gap: 0.65rem; flex: 1; min-width: 0; }
+.bmt-type-bar { width: 4px; min-height: 2.5rem; border-radius: 4px; flex-shrink: 0; align-self: stretch; }
+.bmt-row-body { flex: 1; min-width: 0; }
+.bmt-name { font-size: 0.875rem; font-weight: 600; color: var(--text); line-height: 1.35; margin-bottom: 0.3rem; }
+.bmt-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 0.75rem; align-items: center; }
+.bmt-dates { font-size: 0.775rem; color: var(--gray-600); }
+.bmt-venue { font-size: 0.775rem; color: var(--gray-600); }
+.bmt-age-pill {
+  font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.45rem;
+  background: var(--gray-100); color: var(--gray-600);
+  border-radius: 99px;
+}
+.bmt-type-pill { font-size: 0.72rem; font-weight: 700; }
+.bmt-row-right { flex-shrink: 0; }
+.bmt-badge {
+  display: inline-block; font-size: 0.7rem; font-weight: 700;
+  padding: 0.2rem 0.55rem; border-radius: 99px; white-space: nowrap;
+}
+.bmt-past   { background: var(--gray-100); color: var(--gray-400); }
+.bmt-active { background: #dcfce7; color: #15803d; }
+.bmt-soon   { background: #fef9c3; color: #854d0e; }
+.bmt-future { background: var(--primary-light); color: var(--primary); }
+
 /* ── Curriculum Touchpoints (topic log redesign) ── */
 .tp-entries { padding: 0 1.5rem 1rem; }
 

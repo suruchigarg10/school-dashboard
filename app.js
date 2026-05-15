@@ -536,6 +536,95 @@ function renderExamSchedule() {
     ${html}`;
 }
 
+// ── Badminton Calendar Tab ────────────────────────────────
+function renderBadmintonCalendar() {
+  const el = document.getElementById('badmintonCalendar');
+  if (!el) return;
+
+  const tournaments = (DATA.badmintonCalendar || []).slice().sort((a, b) => a.startDate.localeCompare(b.startDate));
+  if (!tournaments.length) {
+    el.innerHTML = '<p class="muted" style="padding:1.5rem">No tournament data available.</p>';
+    return;
+  }
+
+  const todayStr = todayISO();
+  const TYPE_META = {
+    ranking:       { label: 'Ranking',       color: 'var(--primary)' },
+    national:      { label: 'National',      color: '#7c3aed' },
+    international: { label: 'International', color: '#0891b2' },
+    zonal:         { label: 'Zonal',         color: '#d97706' },
+    special:       { label: 'Special',       color: 'var(--gray-400)' },
+  };
+
+  // Group by month-year
+  const byMonth = {};
+  tournaments.forEach(t => {
+    const key = t.startDate.slice(0, 7); // "2026-05"
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(t);
+  });
+
+  const monthName = key => {
+    const [y, m] = key.split('-');
+    return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  };
+
+  const fmtDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+  const statusBadge = t => {
+    const start = t.startDate, end = t.endDate;
+    if (end < todayStr) return `<span class="bmt-badge bmt-past">Done</span>`;
+    if (start <= todayStr && todayStr <= end) return `<span class="bmt-badge bmt-active">🏸 Ongoing</span>`;
+    const days = Math.round((new Date(start + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000);
+    if (days <= 14) return `<span class="bmt-badge bmt-soon">In ${days}d</span>`;
+    return `<span class="bmt-badge bmt-future">In ${days}d</span>`;
+  };
+
+  const isPast = t => t.endDate < todayStr;
+
+  // Stats
+  const total    = tournaments.length;
+  const upcoming = tournaments.filter(t => !isPast(t)).length;
+  const passed   = total - upcoming;
+
+  el.innerHTML = `
+    <div class="card full-width" style="margin-bottom:1.5rem">
+      <div class="card-header">
+        <h2>🏸 BAI Ranking Calendar 2026-27</h2>
+        <span class="badge-info">${upcoming} upcoming · ${passed} done · ${total} total</span>
+      </div>
+      <div class="bmt-legend">
+        ${Object.entries(TYPE_META).map(([k, v]) =>
+          `<span class="bmt-legend-item"><span class="bmt-dot" style="background:${v.color}"></span>${v.label}</span>`
+        ).join('')}
+      </div>
+    </div>
+    ${Object.keys(byMonth).map(mk => `
+      <div class="card full-width bmt-month-card">
+        <div class="bmt-month-header">${monthName(mk)}</div>
+        ${byMonth[mk].map(t => {
+          const meta = TYPE_META[t.type] || TYPE_META.special;
+          const past = isPast(t);
+          return `
+          <div class="bmt-row ${past ? 'bmt-row-past' : ''}">
+            <div class="bmt-row-left">
+              <div class="bmt-type-bar" style="background:${meta.color}"></div>
+              <div class="bmt-row-body">
+                <div class="bmt-name">${escHtml(t.name)}</div>
+                <div class="bmt-meta">
+                  <span class="bmt-dates">📅 ${fmtDate(t.startDate)} – ${fmtDate(t.endDate)}</span>
+                  <span class="bmt-venue">📍 ${escHtml(t.venue)}</span>
+                  <span class="bmt-age-pill">${escHtml(t.ageGroup)}</span>
+                  <span class="bmt-type-pill" style="color:${meta.color}">${meta.label}</span>
+                </div>
+              </div>
+            </div>
+            <div class="bmt-row-right">${statusBadge(t)}</div>
+          </div>`;
+        }).join('')}
+      </div>`).join('')}`;
+}
+
 // ── Holiday Calendar Tab ───────────────────────────────────
 function renderHolidays(containerId) {
   const el       = document.getElementById(containerId || 'holidayContainer');
@@ -1716,6 +1805,7 @@ renderTodayEmails();
 renderVeracrossChecklist();
 renderHistory();
 renderTopicLog();
+renderBadmintonCalendar();
 renderVeracrossTab();
 renderTimetable();
 renderMyra();
