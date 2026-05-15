@@ -537,12 +537,14 @@ function renderExamSchedule() {
 }
 
 // ── Badminton Calendar Tab ────────────────────────────────
+let _bmtFilter = 'all';
+
 function renderBadmintonCalendar() {
   const el = document.getElementById('badmintonCalendar');
   if (!el) return;
 
-  const tournaments = (DATA.badmintonCalendar || []).slice().sort((a, b) => a.startDate.localeCompare(b.startDate));
-  if (!tournaments.length) {
+  const allTournaments = (DATA.badmintonCalendar || []).slice().sort((a, b) => a.startDate.localeCompare(b.startDate));
+  if (!allTournaments.length) {
     el.innerHTML = '<p class="muted" style="padding:1.5rem">No tournament data available.</p>';
     return;
   }
@@ -556,19 +558,7 @@ function renderBadmintonCalendar() {
     special:       { label: 'Special',       color: 'var(--gray-400)' },
   };
 
-  // Group by month-year
-  const byMonth = {};
-  tournaments.forEach(t => {
-    const key = t.startDate.slice(0, 7); // "2026-05"
-    if (!byMonth[key]) byMonth[key] = [];
-    byMonth[key].push(t);
-  });
-
-  const monthName = key => {
-    const [y, m] = key.split('-');
-    return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-  };
-
+  const isPast  = t => t.endDate < todayStr;
   const fmtDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
   const statusBadge = t => {
@@ -580,25 +570,50 @@ function renderBadmintonCalendar() {
     return `<span class="bmt-badge bmt-future">In ${days}d</span>`;
   };
 
-  const isPast = t => t.endDate < todayStr;
+  // Filter pills — only show types that actually exist in data
+  const existingTypes = ['all', ...Object.keys(TYPE_META).filter(k => allTournaments.some(t => t.type === k))];
+  const filterPills = existingTypes.map(k => {
+    const isAll  = k === 'all';
+    const active = _bmtFilter === k;
+    const meta   = isAll ? null : TYPE_META[k];
+    const label  = isAll ? 'All' : meta.label;
+    const style  = active && !isAll ? `style="background:${meta.color};color:#fff;border-color:${meta.color}"` : '';
+    return `<button class="bmt-filter-pill ${active ? 'bmt-filter-active' : ''}" ${style}
+      onclick="setBmtFilter('${k}')">${label}</button>`;
+  }).join('');
 
-  // Stats
+  // Apply filter
+  const tournaments = _bmtFilter === 'all' ? allTournaments : allTournaments.filter(t => t.type === _bmtFilter);
+
+  // Group by month
+  const byMonth = {};
+  tournaments.forEach(t => {
+    const key = t.startDate.slice(0, 7);
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(t);
+  });
+
+  const monthName = key => {
+    const [y, m] = key.split('-');
+    return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  };
+
   const total    = tournaments.length;
   const upcoming = tournaments.filter(t => !isPast(t)).length;
   const passed   = total - upcoming;
 
+  const noResults = !Object.keys(byMonth).length
+    ? `<p class="muted" style="padding:1.5rem">No tournaments match this filter.</p>` : '';
+
   el.innerHTML = `
-    <div class="card full-width" style="margin-bottom:1.5rem">
+    <div class="card full-width" style="margin-bottom:1.25rem">
       <div class="card-header">
         <h2>🏸 BAI Ranking Calendar 2026-27</h2>
-        <span class="badge-info">${upcoming} upcoming · ${passed} done · ${total} total</span>
+        <span class="badge-info">${upcoming} upcoming · ${passed} done</span>
       </div>
-      <div class="bmt-legend">
-        ${Object.entries(TYPE_META).map(([k, v]) =>
-          `<span class="bmt-legend-item"><span class="bmt-dot" style="background:${v.color}"></span>${v.label}</span>`
-        ).join('')}
-      </div>
+      <div class="bmt-filters">${filterPills}</div>
     </div>
+    ${noResults}
     ${Object.keys(byMonth).map(mk => `
       <div class="card full-width bmt-month-card">
         <div class="bmt-month-header">${monthName(mk)}</div>
@@ -615,7 +630,6 @@ function renderBadmintonCalendar() {
                   <span class="bmt-dates">📅 ${fmtDate(t.startDate)} – ${fmtDate(t.endDate)}</span>
                   <span class="bmt-venue">📍 ${escHtml(t.venue)}</span>
                   <span class="bmt-age-pill">${escHtml(t.ageGroup)}</span>
-                  <span class="bmt-type-pill" style="color:${meta.color}">${meta.label}</span>
                 </div>
               </div>
             </div>
@@ -624,6 +638,11 @@ function renderBadmintonCalendar() {
         }).join('')}
       </div>`).join('')}`;
 }
+
+window.setBmtFilter = function(type) {
+  _bmtFilter = type;
+  renderBadmintonCalendar();
+};
 
 // ── Holiday Calendar Tab ───────────────────────────────────
 function renderHolidays(containerId) {
